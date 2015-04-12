@@ -1,0 +1,9 @@
+1. int num1;
+2. int num2;
+3. int num3;
+4. num1 = 10 + 2 / 2;
+5. num2 = 20 * 3 + num1 - -4;
+6. num3 = 40 % 4;
+7. print num1;
+8. print num2;
+9. print num3;
