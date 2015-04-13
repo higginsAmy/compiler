@@ -20,6 +20,11 @@ print					{return Write;}
 {letter}({letter}|{digit})*	        {return Ident;}
 {digit}{digit}*		                {return IntLit;}
 \=\=					{return EQ;}
+\!\=                                    {return NEQ;}
+\<\=                                    {return LTE;}
+\>\=                                    {return GTE;}
+\<                                      {return LT;}
+\>                                      {return GT;}
 \=					{return '=';}
 \+					{return '+';}
 \-                                      {return '-';}

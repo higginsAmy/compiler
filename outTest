@@ -1,9 +1,31 @@
 1. int num1;
 2. int num2;
-3. int num3;
-4. num1 = 10 + 2 / 2;
-5. num2 = 20 * 3 + num1 - -4;
-6. num3 = 40 % 4;
-7. print num1;
-8. print num2;
-9. print num3;
+3. num1 = 10;
+4. num2 = 20;
+5. 6.    	 num1 = num1 + 10;
+7. 	 print num1;
+8. 	 print num2;
+9. }
+10. 11.    	 num1 = num1 + 10;
+12. 	 print num1;
+13. 	 print num2;
+14. }
+15. 16.    	 num1 = num1 + 10;
+17. 	 print num1;
+18. 	 print num2;
+19. }
+20. 21.    	 num1 = num1 + 10;
+22. 	 print num1;
+23. 	 print num2;
+24. }
+25. 26.    	 num2 = num2 * 2;
+27. 	 print num1;
+28. 	 print num2;
+29. }
+30. 31.    	 num2 = num2 + 10;
+32. 	 print num1;
+33. 	 print num2;
+34. }
+35. print num1;
+36. print num2;
+37. 
