@@ -240,13 +240,12 @@ struct InstrSeq *doAssign(char *name, struct ExprRes * Expr){
   return code;
 }
 
-extern struct BExprRes *doBExpr(char *op, struct ExprRes * Res1,  struct ExprRes * Res2){
+extern struct BExprRes *doBExpr(struct ExprRes * Res1,  struct ExprRes * Res2){
   struct BExprRes * bRes;
 
-  AppendSeq(Res1->Instrs, Res2->Instrs);
   bRes = (struct BExprRes *) malloc(sizeof(struct BExprRes));
   bRes->Label = GenLabel();
-  AppendSeq(Res1->Instrs, GenInstr(NULL, op, TmpRegName(Res1->Reg), TmpRegName(Res2->Reg), bRes->Label));
+  AppendSeq(Res1->Instrs, GenInstr(NULL, "bne", TmpRegName(Res1->Reg), TmpRegName(Res2->Reg), bRes->Label));
   bRes->Instrs = Res1->Instrs;
   ReleaseTmpReg(Res1->Reg);
   ReleaseTmpReg(Res2->Reg);
@@ -256,7 +255,34 @@ extern struct BExprRes *doBExpr(char *op, struct ExprRes * Res1,  struct ExprRes
   return bRes;
 }
 
-extern struct InstrSeq *doIf(struct BExprRes * bRes, struct InstrSeq * seq){
+extern struct BExprRes *doINEQ(char *op, struct ExprRes *Res1, struct ExprRes *Res2){
+  AppendSeq(Res1->Instrs, Res2->Instrs);
+  AppendSeq(Res1->Instrs, GenInstr(NULL, op, TmpRegName(Res1->Reg), TmpRegName(Res1->Reg), TmpRegName(Res2->Reg)));
+  AppendSeq(Res1->Instrs, GenInstr(NULL, "li", TmpRegName(Res2->Reg), "1", NULL));
+  
+  return doBExpr(Res1, Res2);
+}
+
+extern struct BExprRes *doOR(struct BExprRes *Res1, struct BExprRes *Res2){
+
+  AppendSeq(Res1->Instrs, Res2->Instrs);
+  AppendSeq(Res1->Instrs, GenInstr(Res1->Label, NULL, NULL, NULL, NULL));
+  Res1->Label = Res2->Label;
+  free(Res2);
+
+  return Res1;
+}
+
+extern struct BExprRes *doAND(struct BExprRes *Res1, struct BExprRes *Res2){
+  
+  AppendSeq(Res1->Instrs, Res2->Instrs);
+  AppendSeq(Res1->Instrs, GenInstr(Res2->Label, NULL, NULL, NULL, NULL));
+  free(Res2);
+
+  return Res1;
+}
+
+extern struct InstrSeq *doIf(struct BExprRes *bRes, struct InstrSeq * seq){
   struct InstrSeq * seq2;
 
   seq2 = AppendSeq(bRes->Instrs, seq);

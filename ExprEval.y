@@ -40,6 +40,8 @@ extern struct SymEntry *entry;
 %token Int
 %token Write
 %token IF
+%token AND
+%token OR
 %token EQ
 %token NEQ
 %token LTE
@@ -58,12 +60,15 @@ StmtSeq		:									{$$ = NULL;};
 Stmt		:	Write Expr ';'							{$$ = doPrint($2);};
 Stmt		:	Id '=' Expr ';'							{$$ = doAssign($1, $3);};
 Stmt		:	IF '(' BExpr ')' '{' StmtSeq '}'				{$$ = doIf($3, $6);};
-BExpr		:	Expr EQ Expr							{$$ = doBExpr("bne", $1, $3);};
-BExpr           :       Expr NEQ Expr                                                   {$$ = doBExpr("beq", $1, $3);};
-BExpr           :       Expr LTE Expr                                                   {$$ = doBExpr("bgt", $1, $3);};
-BExpr           :       Expr GTE Expr                                                   {$$ = doBExpr("blt", $1, $3);};
-BExpr           :       Expr LT Expr                                                    {$$ = doBExpr("bge", $1, $3);};
-BExpr           :       Expr GT Expr                                                    {$$ = doBExpr("ble", $1, $3);}; 
+BExpr           :       BExpr AND BExpr                                                 {$$ = doAND($1, $3);};
+BExpr           :       BExpr OR BExpr                                                  {$$ = doOR($1, $3);};
+BExpr		:	Expr EQ Expr							{$$ = doINEQ("seq", $1, $3);};
+BExpr           :       Expr NEQ Expr                                                   {$$ = doINEQ("sne", $1, $3);};
+BExpr           :       Expr LTE Expr                                                   {$$ = doINEQ("sle", $1, $3);};
+BExpr           :       Expr GTE Expr                                                   {$$ = doINEQ("sge", $1, $3);};
+BExpr           :       Expr LT Expr                                                    {$$ = doINEQ("slt", $1, $3);};
+BExpr           :       Expr GT Expr                                                    {$$ = doINEQ("sgt", $1, $3);};
+BExpr           :       '(' BExpr ')'                                                   {$$ = $2;};
 Expr		:	Expr '+' Term							{$$ = doAdd($1, $3);};
 Expr            :       Expr '-' Term                                                   {$$ = doSub($1, $3);};
 Expr		:	Term								{$$ = $1;};
@@ -74,6 +79,7 @@ Term		:	Factor                                                          {$$ = $1
 Factor          :       Factor '^' Number                                               {$$ = doExp($1, $3);};
 Factor          :       Number                                                          {$$ = $1;};
 Number          :       '-' Number                                                      {$$ = doNEG($2);};
+Number          :       '(' Number ')'                                                  {$$ = $2;};
 Number		:	IntLit								{$$ = doIntLit(yytext);};
 Number		:	Ident								{$$ = doRval(yytext);};
 Id		: 	Ident								{$$ = strdup(yytext);}

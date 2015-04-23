@@ -52,6 +52,7 @@ char GetSourceChar(){
     return c;
   }
   if (NULL != fgets(buffer, MAXLINE, src)){
+    //printf("LINE: %s\n", ln);
     if (!wrote_line && NULL != lst && 0 != line){
       fprintf(lst, "%d. %s", line, ln);
     }
