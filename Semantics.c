@@ -4,7 +4,6 @@
 
 #include <strings.h>
 #include <stdlib.h>
-
 #include "CodeGen.h"
 #include "Semantics.h"
 #include "SymTab.h"
@@ -14,9 +13,9 @@ extern struct SymTab *table;
 
 /* Semantics support routines */
 
-struct ExprRes *doIntLit(char * digits){ 
+struct ExprRes *doIntLit(char * digits){
   struct ExprRes *res;
-  
+
   res = (struct ExprRes *) malloc(sizeof(struct ExprRes));
   res->Reg = AvailTmpReg();
   res->Instrs = GenInstr(NULL,"li",TmpRegName(res->Reg),digits,NULL);
@@ -24,7 +23,7 @@ struct ExprRes *doIntLit(char * digits){
   return res;
 }
 
-struct ExprRes *doRval(char * name){ 
+struct ExprRes *doRval(char *name){ 
   struct ExprRes *res;
   
   if (!FindName(table, name)) {
@@ -38,7 +37,26 @@ struct ExprRes *doRval(char * name){
   return res;
 }
 
-struct ExprRes *doAdd(struct ExprRes * Res1, struct ExprRes * Res2){ 
+struct BExprRes *doBval(char *name){
+  struct ExprRes *res;
+  struct ExprRes *res2;
+  
+  if (!FindName(table, name)){
+    WriteIndicator(GetCurrentColumn());
+    WriteMessage("Undeclared variable");
+  }
+  res = (struct ExprRes *) malloc(sizeof(struct ExprRes));
+  res->Reg = AvailTmpReg();
+  res->Instrs = GenInstr(NULL, "lw", TmpRegName(res->Reg), name, NULL);
+  res2 = (struct ExprRes *) malloc(sizeof(struct ExprRes));
+  res2->Reg = AvailTmpReg();
+  AppendSeq(res2->Instrs, GenInstr(NULL, "li",
+				   TmpRegName(res2->Reg), "1", NULL));
+
+  return doBExpr("bne", res, res2);
+}
+
+struct ExprRes *doAdd(struct ExprRes *Res1, struct ExprRes *Res2){ 
   int reg;
    
   reg = AvailTmpReg();
@@ -240,12 +258,23 @@ struct InstrSeq *doAssign(char *name, struct ExprRes * Expr){
   return code;
 }
 
-extern struct BExprRes *doBExpr(struct ExprRes * Res1,  struct ExprRes * Res2){
+extern struct InstrSeq *doBAssign(char *name, bool boolean){
+  struct InstrSeq *code;
+  
+  if (!FindName(table, name)){
+    WriteIndicator(GetCurrentColumn());
+    WriteMessage("Undeclared variable");
+  }
+  
+  return code;
+}
+
+extern struct BExprRes *doBExpr(char *op, struct ExprRes *Res1,  struct ExprRes *Res2){
   struct BExprRes * bRes;
 
   bRes = (struct BExprRes *) malloc(sizeof(struct BExprRes));
   bRes->Label = GenLabel();
-  AppendSeq(Res1->Instrs, GenInstr(NULL, "bne", TmpRegName(Res1->Reg), TmpRegName(Res2->Reg), bRes->Label));
+  AppendSeq(Res1->Instrs, GenInstr(NULL, op, TmpRegName(Res1->Reg), TmpRegName(Res2->Reg), bRes->Label));
   bRes->Instrs = Res1->Instrs;
   ReleaseTmpReg(Res1->Reg);
   ReleaseTmpReg(Res2->Reg);
@@ -260,7 +289,7 @@ extern struct BExprRes *doINEQ(char *op, struct ExprRes *Res1, struct ExprRes *R
   AppendSeq(Res1->Instrs, GenInstr(NULL, op, TmpRegName(Res1->Reg), TmpRegName(Res1->Reg), TmpRegName(Res2->Reg)));
   AppendSeq(Res1->Instrs, GenInstr(NULL, "li", TmpRegName(Res2->Reg), "1", NULL));
   
-  return doBExpr(Res1, Res2);
+  return doBExpr("bne", Res1, Res2);
 }
 
 extern struct BExprRes *doOR(struct BExprRes *Res1, struct BExprRes *Res2){

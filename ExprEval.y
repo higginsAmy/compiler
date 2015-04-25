@@ -21,12 +21,15 @@ extern struct SymEntry *entry;
 %union {
   long val;
   char * string;
+  bool boolean;
   struct ExprRes * ExprRes;
   struct InstrSeq * InstrSeq;
   struct BExprRes * BExprRes;
 }
 
 %type <string> Id
+%type <string> BoolId
+%type <boolean> BVal
 %type <ExprRes> Number
 %type <ExprRes> Factor
 %type <ExprRes> Term
@@ -38,6 +41,9 @@ extern struct SymEntry *entry;
 %token Ident 		
 %token IntLit 	
 %token Int
+%token Bool
+%token TRUE
+%token FALSE
 %token Write
 %token IF
 %token AND
@@ -54,21 +60,26 @@ extern struct SymEntry *entry;
 Prog		:	Declarations StmtSeq						{Finish($2);};
 Declarations	:	Dec Declarations						{};
 Declarations	:									{};
-Dec		:	Int Ident {EnterName(table, yytext, &entry); }';'	        {};
+Dec		:	Int Id ';'	                                                {EnterName(table, $2, &entry);
+                                                                                         SetAttr(entry, (void *)"int");};
+Dec             :       Bool BoolId ';'                                                 {EnterName(table, $2, &entry);
+                                                                                         SetAttr(entry, (void *)"bool");};
 StmtSeq 	:	Stmt StmtSeq							{$$ = AppendSeq($1, $2);} ;
 StmtSeq		:									{$$ = NULL;};
 Stmt		:	Write Expr ';'							{$$ = doPrint($2);};
 Stmt		:	Id '=' Expr ';'							{$$ = doAssign($1, $3);};
+Stmt            :       BoolId '=' BVal ';'                                             {$$ = doBAssign($1, $3);};
 Stmt		:	IF '(' BExpr ')' '{' StmtSeq '}'				{$$ = doIf($3, $6);};
 BExpr           :       BExpr AND BExpr                                                 {$$ = doAND($1, $3);};
 BExpr           :       BExpr OR BExpr                                                  {$$ = doOR($1, $3);};
-BExpr		:	Expr EQ Expr							{$$ = doINEQ("seq", $1, $3);};
-BExpr           :       Expr NEQ Expr                                                   {$$ = doINEQ("sne", $1, $3);};
-BExpr           :       Expr LTE Expr                                                   {$$ = doINEQ("sle", $1, $3);};
-BExpr           :       Expr GTE Expr                                                   {$$ = doINEQ("sge", $1, $3);};
-BExpr           :       Expr LT Expr                                                    {$$ = doINEQ("slt", $1, $3);};
-BExpr           :       Expr GT Expr                                                    {$$ = doINEQ("sgt", $1, $3);};
+BExpr		:	Expr EQ Expr							{$$ = doBExpr("bne", $1, $3);};
+BExpr           :       Expr NEQ Expr                                                   {$$ = doBExpr("beq", $1, $3);};
+BExpr           :       Expr LTE Expr                                                   {$$ = doBExpr("bgt", $1, $3);};
+BExpr           :       Expr GTE Expr                                                   {$$ = doBExpr("blt", $1, $3);};
+BExpr           :       Expr LT Expr                                                    {$$ = doBExpr("bge", $1, $3);};
+BExpr           :       Expr GT Expr                                                    {$$ = doBExpr("ble", $1, $3);};
 BExpr           :       '(' BExpr ')'                                                   {$$ = $2;};
+BExpr           :       BoolId                                                          {$$ = doBval(yytext);};
 Expr		:	Expr '+' Term							{$$ = doAdd($1, $3);};
 Expr            :       Expr '-' Term                                                   {$$ = doSub($1, $3);};
 Expr		:	Term								{$$ = $1;};
@@ -82,6 +93,9 @@ Number          :       '-' Number                                              
 Number          :       '(' Number ')'                                                  {$$ = $2;};
 Number		:	IntLit								{$$ = doIntLit(yytext);};
 Number		:	Ident								{$$ = doRval(yytext);};
+BVal            :       TRUE                                                            {$$ = true;};
+BVal            :       FALSE                                                           {$$ = false;};
+BoolId          :       Ident                                                           {$$ = strdup(yytext);};
 Id		: 	Ident								{$$ = strdup(yytext);}
  
 %%

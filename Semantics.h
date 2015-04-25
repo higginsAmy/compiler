@@ -2,6 +2,8 @@
    The action and supporting routines for performing semantics processing.
 */
 
+#include <stdbool.h>
+
 /* Semantic Records */
 struct IdList {
   struct SymEntry *TheEntry;
@@ -27,7 +29,9 @@ struct BExprRes {
 /* Semantics Actions */
 extern struct ExprRes *doIntLit(char *digits);
 extern struct ExprRes *doRval(char *name);
+extern struct BExprRes *doBval(char *name);
 extern struct InstrSeq *doAssign(char *name,  struct ExprRes *Res1);
+extern struct InstrSeq *doBAssign(char *name, bool boolean);
 extern struct ExprRes *doAdd(struct ExprRes *Res1,  struct ExprRes *Res2);
 extern struct ExprRes *doSub(struct ExprRes *Res1, struct ExprRes *Res2);
 extern struct ExprRes *doMult(struct ExprRes *Res1,  struct ExprRes *Res2);
@@ -36,7 +40,7 @@ extern struct ExprRes *doMod(struct ExprRes *Res1, struct ExprRes *Res2);
 extern struct ExprRes *doExp(struct ExprRes *Res1, struct ExprRes *Res2);
 extern struct ExprRes *doNEG(struct ExprRes *Res1);
 extern struct InstrSeq *doPrint(struct ExprRes *Expr);
-extern struct BExprRes *doBExpr(struct ExprRes *Res1,  struct ExprRes *Res2);
+extern struct BExprRes *doBExpr(char *op, struct ExprRes *Res1,  struct ExprRes *Res2);
 extern struct BExprRes *doINEQ(char *op, struct ExprRes *Res1, struct ExprRes *Res2);
 extern struct BExprRes *doOR(struct BExprRes *Res1, struct BExprRes *Res2);
 extern struct BExprRes *doAND(struct BExprRes *Res1, struct BExprRes *Res2);
