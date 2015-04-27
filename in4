@@ -1,0 +1,6 @@
+int num;
+bool b1;
+num = 4;
+b1 = false;
+print num;
+print b1;

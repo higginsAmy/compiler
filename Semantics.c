@@ -13,13 +13,32 @@ extern struct SymTab *table;
 
 /* Semantics support routines */
 
-struct ExprRes *doIntLit(char * digits){
+struct ExprRes *doIntLit(char *digits){
   struct ExprRes *res;
 
   res = (struct ExprRes *) malloc(sizeof(struct ExprRes));
   res->Reg = AvailTmpReg();
   res->Instrs = GenInstr(NULL,"li",TmpRegName(res->Reg),digits,NULL);
 
+  return res;
+}
+
+struct BExprRes *doBLit(bool b){
+  struct BExprRes *res;
+  int reg = AvailTmpReg();
+  int reg2 = AvailTmpReg();
+
+  res = (struct BExprRes *) malloc(sizeof(struct BExprRes));
+  res->Label = GenLabel();
+  if (b){
+    res->Instrs = GenInstr(NULL, "li", TmpRegName(reg), "1", NULL);
+  }
+  else{
+    res->Instrs = GenInstr(NULL, "li", TmpRegName(reg), "0", NULL);
+  }
+  AppendSeq(res->Instrs, GenInstr(NULL, "li", TmpRegName(reg2), "1", NULL));
+  AppendSeq(res->Instrs, GenInstr(NULL, "bne", TmpRegName(reg), TmpRegName(reg2), res->Label));
+  
   return res;
 }
 
@@ -258,13 +277,21 @@ struct InstrSeq *doAssign(char *name, struct ExprRes * Expr){
   return code;
 }
 
-extern struct InstrSeq *doBAssign(char *name, bool boolean){
+extern struct InstrSeq *doBAssign(char *name, struct BExprRes *Res){
   struct InstrSeq *code;
+  int reg = AvailTmpReg();
+  char *label = GenLabel();
   
   if (!FindName(table, name)){
     WriteIndicator(GetCurrentColumn());
     WriteMessage("Undeclared variable");
   }
+  code = Res->Instrs;
+
+  AppendSeq(code, GenInstr(NULL, "li", TmpRegName(reg), "1", NULL));
+  AppendSeq(code, GenInstr(NULL, "j", label, NULL, NULL));
+  AppendSeq(code, GenInstr(Res->Label, "li", TmpRegName(reg), "0", NULL));
+  AppendSeq(code, GenInstr(label, "sw", TmpRegName(reg), name, NULL));
   
   return code;
 }

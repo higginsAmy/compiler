@@ -28,10 +28,11 @@ struct BExprRes {
 
 /* Semantics Actions */
 extern struct ExprRes *doIntLit(char *digits);
+extern struct BExprRes *doBLit(bool b);
 extern struct ExprRes *doRval(char *name);
 extern struct BExprRes *doBval(char *name);
 extern struct InstrSeq *doAssign(char *name,  struct ExprRes *Res1);
-extern struct InstrSeq *doBAssign(char *name, bool boolean);
+extern struct InstrSeq *doBAssign(char *name, struct BExprRes *res);
 extern struct ExprRes *doAdd(struct ExprRes *Res1,  struct ExprRes *Res2);
 extern struct ExprRes *doSub(struct ExprRes *Res1, struct ExprRes *Res2);
 extern struct ExprRes *doMult(struct ExprRes *Res1,  struct ExprRes *Res2);

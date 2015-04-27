@@ -54,14 +54,9 @@ char GetSourceChar(){
   if (NULL != fgets(buffer, MAXLINE, src)){
     //printf("LINE: %s\n", ln);
     if (!wrote_line && NULL != lst && 0 != line){
-      fprintf(lst, "%d. %s", line, ln);
+      fprintf(lst, "%d. %s\n", line, ln);
     }
-    for (i = 0; i < MAXLINE; i++){
-      ln[i] = buffer[i];
-      if ('\0' == buffer[i]){
-	break;
-      }
-    }
+    strcpy(ln, buffer);
     line ++;
     col = 0;
     wrote_line = false;
@@ -69,7 +64,7 @@ char GetSourceChar(){
   }
   else {
     if (!wrote_line && NULL != lst){
-      fprintf(lst, "%d. %s", line, ln);
+      fprintf(lst, "%d. %s\n", line, ln);
     }
     //printf("Reached end of file!\n");
     return EOF;
@@ -92,7 +87,7 @@ void WriteIndicator(int AColumn){
     printf("%c\n", carat);
   }
   else {
-    fprintf(lst, "%d. %s", line, buffer);
+    fprintf(lst, "%d. %s\n", line, buffer);
     for (i = 0; i < AColumn; i++){
       if (EOF == fputc((int)space, lst)){
 	printf("Unable to add character to file.\n");

@@ -44,6 +44,8 @@ bool EnterName(struct SymTab *ATable, const char *Name,	struct SymEntry	**AnEntr
   char *name;
   int hash;
 
+  //strcpy(name, "_");
+  //strcat(name, Name);
   if (NULL != FindName(ATable, Name)){
     *AnEntry = FindName(ATable, Name);
     return false;
@@ -51,8 +53,9 @@ bool EnterName(struct SymTab *ATable, const char *Name,	struct SymEntry	**AnEntr
   hash = hash_code(Name, ATable->Size);
   //printf("Hashed name %s to location %d.\n", Name, hash);
   temp = ATable->Contents[hash];
-  new_entry = (struct SymEntry *)malloc(sizeof(struct SymEntry));
   name = strdup(Name);
+  //printf("Storing in Symbol Table: %s\n", name);
+  new_entry = (struct SymEntry *)malloc(sizeof(struct SymEntry));
   new_entry->Name = name;
   new_entry->Next = NULL;
   new_entry->Attributes = NULL;
