@@ -1,6 +1,17 @@
 int num;
+int num2;
 bool b1;
+bool b2;
+bool b3;
+
 num = 4;
+num2 = num + 1;
 b1 = false;
+b2 = num > 2;
+b3 = b1;
+
 print num;
+print num2;
 print b1;
+print b2;
+print b3;

@@ -16,12 +16,13 @@ struct ExprRes {
 };
 
 struct ExprResList {
-	struct ExprRes *Expr;
-	struct ExprResList *Next;
+  struct ExprRes *Expr;
+  struct ExprResList *Next;
 };
 
 struct BExprRes {
   char *Label;
+  int Reg;
   struct InstrSeq *Instrs;
 };
 
