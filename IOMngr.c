@@ -86,13 +86,13 @@ void WriteIndicator(int AColumn){
     printf("%c\n", carat);
   }
   else {
-    fprintf(lst, "%d. %s", line, buffer);
+    fprintf(lst, "%d. %s\n", line, buffer);
     for (i = 0; i < AColumn; i++){
       if (EOF == fputc((int)space, lst)){
 	printf("Unable to add character to file.\n");
       }
     }
-    fprintf(lst, "%c", carat);
+    fprintf(lst, "%c\n", carat);
   }
 }
 

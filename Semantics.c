@@ -19,7 +19,8 @@ struct ExprRes *doIntLit(char *digits){
   res = (struct ExprRes *) malloc(sizeof(struct ExprRes));
   res->Reg = AvailTmpReg();
   res->Instrs = GenInstr(NULL,"li",TmpRegName(res->Reg),digits,NULL);
-
+  res->boolean = false;
+  
   return res;
 }
 
@@ -49,7 +50,8 @@ struct ExprRes *doRval(char *name){
   res = (struct ExprRes *) malloc(sizeof(struct ExprRes));
   res->Reg = AvailTmpReg();
   res->Instrs = GenInstr(NULL,"lw",TmpRegName(res->Reg),name,NULL);
-
+  res->boolean = false;
+  
   return res;
 }
 
@@ -67,6 +69,24 @@ struct BExprRes *doBval(char *name){
   bRes->Instrs = GenInstr(NULL, "lw", TmpRegName(bRes->Reg), name, NULL);
   
   return bRes;
+}
+
+struct BExprRes *doNOT(struct BExprRes *Res){
+  int reg1 = AvailTmpReg();
+  char *label = GenLabel();
+  char *finish = GenLabel();
+  
+  AppendSeq(Res->Instrs, GenInstr(NULL, "li", TmpRegName(reg1), "1", NULL));
+  AppendSeq(Res->Instrs, GenInstr(NULL, "beq", TmpRegName(Res->Reg),
+				  TmpRegName(reg1), label));
+  AppendSeq(Res->Instrs, GenInstr(NULL, "li", TmpRegName(Res->Reg), "1", NULL));
+  AppendSeq(Res->Instrs, GenInstr(NULL, "j", finish, NULL, NULL));
+  AppendSeq(Res->Instrs, GenInstr(label, NULL, NULL, NULL, NULL));
+  AppendSeq(Res->Instrs, GenInstr(NULL, "li", TmpRegName(Res->Reg), "0", NULL));
+  AppendSeq(Res->Instrs, GenInstr(finish, NULL, NULL, NULL, NULL));
+  ReleaseTmpReg(reg1);
+
+  return Res;
 }
 
 struct ExprRes *doAdd(struct ExprRes *Res1, struct ExprRes *Res2){ 
@@ -234,7 +254,7 @@ struct ExprRes *doNEG(struct ExprRes *Res1){
   return Res1;
 }
 
-struct InstrSeq *doPrint(struct ExprRes * Expr){ 
+struct InstrSeq *doPrint(struct ExprRes *Expr){ 
   struct InstrSeq *code;
     
   code = Expr->Instrs;
@@ -250,6 +270,56 @@ struct InstrSeq *doPrint(struct ExprRes * Expr){
   ReleaseTmpReg(Expr->Reg);
   free(Expr);
 
+  return code;
+}
+
+extern struct InstrSeq *doPrintList(struct ExprResList *List){
+  struct InstrSeq *code;
+  struct ExprRes *temp;
+  int reg = AvailTmpReg();
+  char *label;
+  char *finish;
+
+  //printExprList(List);
+  code = GenInstr(NULL, NULL, NULL, NULL, NULL);
+  while (List){
+    temp = List->Expr;
+    AppendSeq(code, temp->Instrs);
+    if (true == temp->boolean){
+      label = GenLabel();
+      finish = GenLabel();
+      printf("Printing a boolean\n");
+      AppendSeq(code, GenInstr(NULL, "li", TmpRegName(reg), "1", NULL));
+      AppendSeq(code, GenInstr(NULL, "li", "$v0", "4", NULL));
+      AppendSeq(code, GenInstr(NULL, "bne", TmpRegName(temp->Reg),
+    			       TmpRegName(reg), label));
+      AppendSeq(code, GenInstr(NULL, "la", "$a0", "_t", NULL));
+      AppendSeq(code, GenInstr(NULL, "syscall", NULL, NULL, NULL));
+      AppendSeq(code, GenInstr(NULL, "j", finish, NULL, NULL));
+      AppendSeq(code, GenInstr(label, NULL, NULL, NULL, NULL));
+      AppendSeq(code, GenInstr(NULL, "la", "$a0", "_f", NULL));
+      AppendSeq(code, GenInstr(NULL, "syscall", NULL, NULL, NULL));
+      AppendSeq(code, GenInstr(finish, NULL, NULL, NULL, NULL));
+    }
+    else{
+      printf("Printing an int\n");
+      AppendSeq(code, GenInstr(NULL,"li","$v0","1",NULL));
+      AppendSeq(code, GenInstr(NULL,"move","$a0",TmpRegName(temp->Reg),NULL));
+      AppendSeq(code, GenInstr(NULL,"syscall",NULL,NULL,NULL));
+    }
+    AppendSeq(code, GenInstr(NULL,"li","$v0","4",NULL));
+    AppendSeq(code, GenInstr(NULL,"la","$a0","_sp",NULL));
+    AppendSeq(code, GenInstr(NULL,"syscall",NULL,NULL,NULL));
+    ReleaseTmpReg(temp->Reg);
+    free(temp);
+    List = List->Next;
+  }
+  AppendSeq(code, GenInstr(NULL,"li","$v0","4",NULL));
+  AppendSeq(code, GenInstr(NULL,"la","$a0","_nl",NULL));
+  AppendSeq(code, GenInstr(NULL,"syscall",NULL,NULL,NULL));
+  ReleaseTmpReg(reg);
+  free(List);
+  
   return code;
 }
 
@@ -367,6 +437,80 @@ extern struct InstrSeq *doIf(struct BExprRes *bRes, struct InstrSeq * seq){
   return seq2;
 }
 
+extern struct ExprResList *doList(struct ExprRes *Res, struct ExprResList *ResList){
+  struct ExprResList *list;
+
+  list = (struct ExprResList *)malloc(sizeof(struct ExprResList));
+  list->Expr = Res;
+  list->Next = ResList;
+
+  return list;
+}
+
+extern struct ExprResList *doListItem(struct ExprRes *Res){
+  struct ExprResList *list;
+
+  list = (struct ExprResList *)malloc(sizeof(struct ExprResList));
+  list->Expr = Res;
+  list->Next = NULL;
+
+  return list;
+}
+
+extern struct ExprResList *doBList(struct BExprRes *Res, struct ExprResList *ResList){
+  struct ExprRes *res;
+  struct ExprResList *list;
+  
+  res = (struct ExprRes *)malloc(sizeof(struct ExprRes));
+  list = (struct ExprResList *)malloc(sizeof(struct ExprResList));
+  res->Reg = AvailTmpReg();
+  res->Instrs = Res->Instrs;
+  res->boolean = true;
+  AppendSeq(res->Instrs, GenInstr(NULL, "add", TmpRegName(res->Reg),
+				  TmpRegName(Res->Reg), "$zero"));
+  list->Expr = res;
+  list->Next = ResList;
+  ReleaseTmpReg(Res->Reg);
+  free(Res);
+  
+  return list;
+}
+
+extern struct ExprResList *doBListItem(struct BExprRes *Res){
+  struct ExprRes *res;
+  struct ExprResList *list;
+
+  res = (struct ExprRes *)malloc(sizeof(struct ExprRes));
+  list = (struct ExprResList *)malloc(sizeof(struct ExprResList));
+  res->Reg = AvailTmpReg();
+  res->Instrs = Res->Instrs;
+  res->boolean = true;
+  AppendSeq(res->Instrs, GenInstr(NULL, "add", TmpRegName(res->Reg),
+				  TmpRegName(Res->Reg), "$zero"));
+  list->Expr = res;
+  list->Next = NULL;
+  ReleaseTmpReg(Res->Reg);
+  free(Res);
+
+  return list;
+}
+
+void printExprList(struct ExprResList *list){
+  struct ExprResList *templist;
+  struct ExprRes *temp;
+
+  while (templist){
+    temp = templist->Expr;
+    if (temp->boolean){
+      printf("Variable is type: boolean\n");
+    }
+    else{
+      printf("Variable is type: int\n");
+    }
+    templist = templist->Next;
+  }
+}
+
 void Finish(struct InstrSeq *Code){
   struct InstrSeq *code;
   struct SymEntry *entry;
@@ -381,8 +525,11 @@ void Finish(struct InstrSeq *Code){
   AppendSeq(code, GenInstr(NULL,"syscall",NULL,NULL,NULL));
   AppendSeq(code, GenInstr(NULL,".data",NULL,NULL,NULL));
   AppendSeq(code, GenInstr(NULL,".align","4",NULL,NULL));
-  AppendSeq(code, GenInstr("_nl",".asciiz","\"\\n\"",NULL,NULL));
-  AppendSeq(code, GenInstr("errExp",".asciiz",
+  AppendSeq(code, GenInstr("_nl", ".asciiz", "\"\\n\"",NULL,NULL));
+  AppendSeq(code, GenInstr("_sp", ".asciiz", "\" \"", NULL, NULL));
+  AppendSeq(code, GenInstr("_t", ".asciiz", "\"true\"", NULL, NULL));
+  AppendSeq(code, GenInstr("_f", ".asciiz", "\"false\"", NULL, NULL));
+  AppendSeq(code, GenInstr("errExp", ".asciiz",
 			   "\"error: your exponent cannot be less than 0.\"",NULL,NULL));
   
   entry = FirstEntry(table);

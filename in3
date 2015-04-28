@@ -1,8 +1,20 @@
 int num1;
 int num2;
+bool b1;
+bool b2;
+bool b3;
+bool b4;
 num1 = 10;
 num2 = 20;
+b1 = true;
+b2 = !b1;
+b3 = b1 || b2;
+b4 = b1 && b2;
 if (num1 < 2 || (1*2) == 2) {
    print num1;
 }
 print num2;
+print b1;
+print b2;
+print b3;
+print b4;

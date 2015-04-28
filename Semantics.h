@@ -12,6 +12,7 @@ struct IdList {
 
 struct ExprRes {
   int Reg;
+  bool boolean;
   struct InstrSeq *Instrs;
 };
 
@@ -32,6 +33,7 @@ extern struct ExprRes *doIntLit(char *digits);
 extern struct BExprRes *doBLit(bool b);
 extern struct ExprRes *doRval(char *name);
 extern struct BExprRes *doBval(char *name);
+extern struct BExprRes *doNOT(struct BExprRes *Res);
 extern struct InstrSeq *doAssign(char *name,  struct ExprRes *Res1);
 extern struct InstrSeq *doBAssign(char *name, struct BExprRes *res);
 extern struct ExprRes *doAdd(struct ExprRes *Res1,  struct ExprRes *Res2);
@@ -42,9 +44,15 @@ extern struct ExprRes *doMod(struct ExprRes *Res1, struct ExprRes *Res2);
 extern struct ExprRes *doExp(struct ExprRes *Res1, struct ExprRes *Res2);
 extern struct ExprRes *doNEG(struct ExprRes *Res1);
 extern struct InstrSeq *doPrint(struct ExprRes *Expr);
+extern struct InstrSeq *doPrintList(struct ExprResList *List);
 extern struct BExprRes *doBExpr(char *op, struct ExprRes *Res1,  struct ExprRes *Res2);
 extern struct BExprRes *doINEQ(char *op, struct ExprRes *Res1, struct ExprRes *Res2);
 extern struct BExprRes *doOR(struct BExprRes *Res1, struct BExprRes *Res2);
 extern struct BExprRes *doAND(struct BExprRes *Res1, struct BExprRes *Res2);
 extern struct InstrSeq *doIf(struct BExprRes *bRes, struct InstrSeq *seq);
+extern struct ExprResList *doList(struct ExprRes *Res, struct ExprResList *ResList);
+extern struct ExprResList *doListItem(struct ExprRes *Res);
+extern struct ExprResList *doBList(struct BExprRes *Res, struct ExprResList *ResList);
+extern struct ExprResList *doBListItem(struct BExprRes *Res);
+extern void printExprList(struct ExprResList *list);
 extern void Finish(struct InstrSeq *Code);

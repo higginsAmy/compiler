@@ -16,9 +16,14 @@ digit [0-9]
 %%
 if					{return IF;}
 int					{return Int;}
+bool                                    {return Bool;}
+true                                    {return TRUE;}
+false                                   {return FALSE;}
 print					{return Write;}
 {letter}({letter}|{digit})*	        {return Ident;}
 {digit}{digit}*		                {return IntLit;}
+\&\&                                    {return AND;}
+\|\|                                    {return OR;}
 \=\=					{return EQ;}
 \!\=                                    {return NEQ;}
 \<\=                                    {return LTE;}
@@ -26,12 +31,14 @@ print					{return Write;}
 \<                                      {return LT;}
 \>                                      {return GT;}
 \=					{return '=';}
+\!                                      {return '!';}
 \+					{return '+';}
 \-                                      {return '-';}
 \*					{return '*';}
 \/                                      {return '/';}
 \%                                      {return '%';}
 \^                                      {return '^';}
+\,                                      {return ',';}
 \;					{return ';';}
 \{					{return '{';}
 \}					{return '}';}

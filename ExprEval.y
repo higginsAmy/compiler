@@ -25,6 +25,7 @@ extern struct SymEntry *entry;
   struct ExprRes * ExprRes;
   struct InstrSeq * InstrSeq;
   struct BExprRes * BExprRes;
+  struct ExprResList *ExprResList;
 }
 
 %type <string> Id
@@ -33,8 +34,11 @@ extern struct SymEntry *entry;
 %type <ExprRes> Factor
 %type <ExprRes> Term
 %type <ExprRes> Expr
+%type <ExprResList> ExprList
 %type <InstrSeq> StmtSeq
 %type <InstrSeq> Stmt
+%type <BExprRes> BFactor
+%type <BExprRes> BTerm
 %type <BExprRes> BExpr
 
 %token Ident 		
@@ -66,20 +70,31 @@ Dec             :       Bool Id ';'                                             
 StmtSeq 	:	Stmt StmtSeq							{$$ = AppendSeq($1, $2);} ;
 StmtSeq		:									{$$ = NULL;};
 Stmt		:	Write Expr ';'							{$$ = doPrint($2);};
+Stmt            :       Write '(' ExprList ')' ';'                                      {$$ = doPrintList($3);};
 Stmt		:	Id '=' Expr ';'							{$$ = doAssign($1, $3);};
 Stmt            :       Id '=' BExpr ';'                                                {$$ = doBAssign($1, $3);};
 Stmt		:	IF '(' BExpr ')' '{' StmtSeq '}'				{$$ = doIf($3, $6);};
-BExpr           :       BExpr AND BExpr                                                 {$$ = doAND($1, $3);};
-BExpr           :       BExpr OR BExpr                                                  {$$ = doOR($1, $3);};
-BExpr		:	Expr EQ Expr							{$$ = doBExpr("seq", $1, $3);};
-BExpr           :       Expr NEQ Expr                                                   {$$ = doBExpr("sne", $1, $3);};
-BExpr           :       Expr LTE Expr                                                   {$$ = doBExpr("sle", $1, $3);};
-BExpr           :       Expr GTE Expr                                                   {$$ = doBExpr("sge", $1, $3);};
-BExpr           :       Expr LT Expr                                                    {$$ = doBExpr("slt", $1, $3);};
-BExpr           :       Expr GT Expr                                                    {$$ = doBExpr("sgt", $1, $3);};
-BExpr           :       '(' BExpr ')'                                                   {$$ = $2;};
-BExpr           :       Id                                                              {$$ = doBval($1);};
-BExpr           :       BVal                                                            {$$ = doBLit($1);};
+ExprList        :       Expr ',' ExprList                                               {$$ = doList($1, $3);};
+ExprList        :       BExpr ',' ExprList                                              {$$ = doBList($1, $3);};
+ExprList        :       Expr                                                            {$$ = doListItem($1);};
+ExprList        :       BExpr                                                           {$$ = doBListItem($1);};
+ExprList        :                                                                       {$$ = NULL;};
+BExpr           :       BExpr OR BTerm                                                  {$$ = doOR($1, $3);};
+BExpr           :       BTerm                                                           {$$ = $1;};
+BTerm           :       BTerm AND BFactor                                               {$$ = doAND($1, $3);};
+BTerm           :       BFactor                                                         {$$ = $1;};
+BFactor         :       '!' BFactor                                                     {$$ = doNOT($2);};
+BFactor		:	Expr EQ Expr							{$$ = doBExpr("seq", $1, $3);};
+BFactor         :       Expr NEQ Expr                                                   {$$ = doBExpr("sne", $1, $3);};
+BFactor         :       Expr LTE Expr                                                   {$$ = doBExpr("sle", $1, $3);};
+BFactor         :       Expr GTE Expr                                                   {$$ = doBExpr("sge", $1, $3);};
+BFactor         :       Expr LT Expr                                                    {$$ = doBExpr("slt", $1, $3);};
+BFactor         :       Expr GT Expr                                                    {$$ = doBExpr("sgt", $1, $3);};
+BFactor         :       Id                                                              {$$ = doBval($1);};
+BFactor         :       '(' BExpr ')'                                                   {$$ = $2;};
+BFactor         :       BVal                                                            {$$ = doBLit($1);};
+BVal            :       TRUE                                                            {$$ = true;};
+BVal            :       FALSE                                                           {$$ = false;};
 Expr		:	Expr '+' Term							{$$ = doAdd($1, $3);};
 Expr            :       Expr '-' Term                                                   {$$ = doSub($1, $3);};
 Expr		:	Term								{$$ = $1;};
@@ -88,13 +103,11 @@ Term            :       Term '/' Factor                                         
 Term            :       Term '%' Factor                                                 {$$ = doMod($1, $3);};
 Term		:	Factor                                                          {$$ = $1;};
 Factor          :       Factor '^' Number                                               {$$ = doExp($1, $3);};
-Expr            :       '(' Expr ')'                                                    {$$ = $2;};
 Factor          :       Number                                                          {$$ = $1;};
+Number          :       Id                                                              {$$ = doRval($1);};
 Number          :       '-' Number                                                      {$$ = doNEG($2);};
-Number		:	IntLit								{$$ = doIntLit(yytext);};
-Number		:	Id								{$$ = doRval($1);};
-BVal            :       TRUE                                                            {$$ = true;};
-BVal            :       FALSE                                                           {$$ = false;};
+Number          :       '(' Expr ')'                                                    {$$ = $2;};
+Number          :       IntLit                                                          {$$ = doIntLit(yytext);};
 Id		: 	Ident								{$$ = strdup(yytext);}
  
 %%
