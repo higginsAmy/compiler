@@ -48,7 +48,11 @@ extern struct SymEntry *entry;
 %token TRUE
 %token FALSE
 %token Write
+%token LN
+%token SP
 %token IF
+%token ELSE
+%token WHILE
 %token AND
 %token OR
 %token EQ
@@ -71,9 +75,13 @@ StmtSeq 	:	Stmt StmtSeq							{$$ = AppendSeq($1, $2);} ;
 StmtSeq		:									{$$ = NULL;};
 Stmt		:	Write Expr ';'							{$$ = doPrint($2);};
 Stmt            :       Write '(' ExprList ')' ';'                                      {$$ = doPrintList($3);};
+Stmt            :       LN ';'                                                          {$$ = doPrintLN();};
+Stmt            :       SP '(' Expr ')' ';'                                             {$$ = doPrintSP($3);};
 Stmt		:	Id '=' Expr ';'							{$$ = doAssign($1, $3);};
 Stmt            :       Id '=' BExpr ';'                                                {$$ = doBAssign($1, $3);};
 Stmt		:	IF '(' BExpr ')' '{' StmtSeq '}'				{$$ = doIf($3, $6);};
+Stmt            :       IF '(' BExpr ')' '{' StmtSeq '}' ELSE '{' StmtSeq '}'           {$$ = doIfElse($3, $6, $10);};
+Stmt            :       WHILE '(' BExpr ')' '{' StmtSeq '}'                             {$$ = doWhile($3, $6);};
 ExprList        :       Expr ',' ExprList                                               {$$ = doList($1, $3);};
 ExprList        :       BExpr ',' ExprList                                              {$$ = doBList($1, $3);};
 ExprList        :       Expr                                                            {$$ = doListItem($1);};

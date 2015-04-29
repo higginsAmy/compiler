@@ -53,7 +53,7 @@ char GetSourceChar(){
   if (NULL != fgets(buffer, MAXLINE, src)){
     //printf("LINE: %s\n", ln);
     if (!wrote_line && NULL != lst && 0 != line){
-      fprintf(lst, "%d. %s", line, ln);
+      fprintf(lst, "%d. %s\n", line, ln);
     }
     strcpy(ln, buffer);
     line ++;
@@ -63,7 +63,7 @@ char GetSourceChar(){
   }
   else {
     if (!wrote_line && NULL != lst){
-      fprintf(lst, "%d. %s", line, ln);
+      fprintf(lst, "%d. %s\n", line, ln);
     }
     //printf("Reached end of file!\n");
     return EOF;

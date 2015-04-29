@@ -1,0 +1,10 @@
+int x;
+int y;
+
+x = 4;
+y = 5;
+while (x < y){
+      print x;
+      x = x + 1;
+}
+print y;

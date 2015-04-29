@@ -323,6 +323,34 @@ extern struct InstrSeq *doPrintList(struct ExprResList *List){
   return code;
 }
 
+extern struct InstrSeq *doPrintLN(){
+  struct InstrSeq *code;
+
+  code = GenInstr(NULL,"li","$v0","4",NULL);
+  AppendSeq(code, GenInstr(NULL,"la","$a0","_nl",NULL));
+  AppendSeq(code, GenInstr(NULL,"syscall",NULL,NULL,NULL));
+
+  return code;
+}
+
+extern struct InstrSeq *doPrintSP(struct ExprRes *Expr){
+  struct InstrSeq *code;
+  char *loop = GenLabel();
+  char *finish = GenLabel();
+
+  code = GenInstr(loop, "blez", TmpRegName(Expr->Reg), finish, NULL);
+  AppendSeq(code, GenInstr(NULL,"li","$v0","4",NULL));
+  AppendSeq(code, GenInstr(NULL,"la","$a0","_sp",NULL));
+  AppendSeq(code, GenInstr(NULL,"syscall",NULL,NULL,NULL));
+  AppendSeq(code, GenInstr(NULL, "addi", TmpRegName(Expr->Reg), TmpRegName(Expr->Reg), "-1"));
+  AppendSeq(code, GenInstr(NULL, "j", loop, NULL, NULL));
+  AppendSeq(code, GenInstr(finish, NULL, NULL, NULL, NULL));
+  ReleaseTmpReg(Expr->Reg);
+  free(Expr);
+
+  return code;
+}
+
 struct InstrSeq *doAssign(char *name, struct ExprRes * Expr){ 
   struct InstrSeq *code;
 
@@ -435,6 +463,44 @@ extern struct InstrSeq *doIf(struct BExprRes *bRes, struct InstrSeq * seq){
   free(bRes);
 
   return seq2;
+}
+
+extern struct InstrSeq *doIfElse(struct BExprRes *bRes, struct InstrSeq *seq, struct InstrSeq *seq2){
+  struct InstrSeq *code;
+  char *finish = GenLabel();
+  int reg = AvailTmpReg();
+
+  code = bRes->Instrs;
+  AppendSeq(code, GenInstr(NULL, "li", TmpRegName(reg), "1", NULL));
+  AppendSeq(code, GenInstr(NULL, "bne", TmpRegName(bRes->Reg),
+			   TmpRegName(reg), bRes->Label));
+  AppendSeq(code, seq);
+  AppendSeq(code, GenInstr(NULL, "j", finish, NULL, NULL));
+  AppendSeq(code, GenInstr(bRes->Label, NULL, NULL, NULL, NULL));
+  AppendSeq(code, seq2);
+  AppendSeq(code, GenInstr(finish, NULL, NULL, NULL, NULL));
+  ReleaseTmpReg(reg);
+  ReleaseTmpReg(bRes->Reg);
+  free(bRes);
+
+  return code;
+}
+
+extern struct InstrSeq *doWhile(struct BExprRes *bRes, struct InstrSeq *seq){
+  struct InstrSeq *code;
+  char *loop = GenLabel();
+  int reg = AvailTmpReg();
+
+  code = bRes->Instrs;
+  AppendSeq(code, GenInstr(NULL, "li", TmpRegName(reg), "1", NULL));
+  AppendSeq(code, GenInstr(loop, "bne", TmpRegName(bRes->Reg),
+			   TmpRegName(reg), bRes->Label));
+  AppendSeq(code, seq);
+  AppendSeq(code, bRes->Instrs);
+  AppendSeq(code, GenInstr(NULL, "j", loop, NULL, NULL));
+  AppendSeq(code, GenInstr(bRes->Label, NULL, NULL, NULL, NULL));
+  
+  return code;
 }
 
 extern struct ExprResList *doList(struct ExprRes *Res, struct ExprResList *ResList){

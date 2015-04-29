@@ -19,6 +19,10 @@ int					{return Int;}
 bool                                    {return Bool;}
 true                                    {return TRUE;}
 false                                   {return FALSE;}
+else                                    {return ELSE;}
+while                                   {return WHILE;}
+println                                 {return LN;}
+printsp                                 {return SP;}
 print					{return Write;}
 {letter}({letter}|{digit})*	        {return Ident;}
 {digit}{digit}*		                {return IntLit;}

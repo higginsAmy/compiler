@@ -1,0 +1,15 @@
+int h;
+int k;
+h = 4;
+k = 5;
+print h;
+println;
+print k;
+print h;
+printsp (1);
+print k;
+printsp (1 + 1);
+print h;
+printsp (1 * 3);
+printk;
+printsp (h);
