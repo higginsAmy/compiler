@@ -12,6 +12,29 @@
 extern struct SymTab *table;
 
 /* Semantics support routines */
+extern struct GenExprRes *doGenBool(struct BExprRes *Res){
+  struct GenExprRes *gRes;
+
+  gRes = (struct GenExprRes *)malloc(sizeof(struct GenExprRes));
+  gRes->Instrs = Res->Instrs;
+  gRes->Reg = Res->Reg;
+  gRes->isBool = true;
+  free(Res);
+
+  return gRes;
+}
+
+extern struct GenExprRes *doGenInt(struct ExprRes *Res){
+  struct GenExprRes *gRes;
+
+  gRes = (struct GenExprRes *)malloc(sizeof(struct GenExprRes));
+  gRes->Instrs = Res->Instrs;
+  gRes->Reg = Res->Reg;
+  gRes->isBool = false;
+  free(Res);
+
+  return gRes;
+}
 
 struct ExprRes *doIntLit(char *digits){
   struct ExprRes *res;
@@ -19,7 +42,6 @@ struct ExprRes *doIntLit(char *digits){
   res = (struct ExprRes *) malloc(sizeof(struct ExprRes));
   res->Reg = AvailTmpReg();
   res->Instrs = GenInstr(NULL,"li",TmpRegName(res->Reg),digits,NULL);
-  res->boolean = false;
   
   return res;
 }
@@ -50,7 +72,6 @@ struct ExprRes *doRval(char *name){
   res = (struct ExprRes *) malloc(sizeof(struct ExprRes));
   res->Reg = AvailTmpReg();
   res->Instrs = GenInstr(NULL,"lw",TmpRegName(res->Reg),name,NULL);
-  res->boolean = false;
   
   return res;
 }
@@ -68,6 +89,17 @@ struct BExprRes *doBval(char *name){
   bRes->Reg = AvailTmpReg();
   bRes->Instrs = GenInstr(NULL, "lw", TmpRegName(bRes->Reg), name, NULL);
   
+  return bRes;
+}
+
+extern struct BExprRes *doConvert(struct ExprRes *Res){
+  struct BExprRes *bRes;
+
+  bRes = (struct BExprRes *)malloc(sizeof(struct BExprRes));
+  bRes->Label = GenLabel();
+  bRes->Reg = Res->Reg;
+  bRes->Instrs = Res->Instrs;
+
   return bRes;
 }
 
@@ -254,19 +286,38 @@ struct ExprRes *doNEG(struct ExprRes *Res1){
   return Res1;
 }
 
-struct InstrSeq *doPrint(struct ExprRes *Expr){ 
+struct InstrSeq *doPrint(struct GenExprRes *Expr){ 
   struct InstrSeq *code;
+  int reg = AvailTmpReg();
+  char *label;
+  char *finish;
     
   code = Expr->Instrs;
-  
-  AppendSeq(code,GenInstr(NULL,"li","$v0","1",NULL));
-  AppendSeq(code,GenInstr(NULL,"move","$a0",TmpRegName(Expr->Reg),NULL));
-  AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
-
+  /*  if (Expr->isBool){
+    label = GenLabel();
+    finish = GenLabel();
+    printf("Printing a boolean\n");
+    AppendSeq(code, GenInstr(NULL, "li", TmpRegName(reg), "1", NULL));
+    AppendSeq(code, GenInstr(NULL, "li", "$v0", "4", NULL));
+    AppendSeq(code, GenInstr(NULL, "bne", TmpRegName(Expr->Reg),
+			     TmpRegName(reg), label));
+    AppendSeq(code, GenInstr(NULL, "la", "$a0", "_t", NULL));
+    AppendSeq(code, GenInstr(NULL, "syscall", NULL, NULL, NULL));
+    AppendSeq(code, GenInstr(NULL, "j", finish, NULL, NULL));
+    AppendSeq(code, GenInstr(label, NULL, NULL, NULL, NULL));
+    AppendSeq(code, GenInstr(NULL, "la", "$a0", "_f", NULL));
+    AppendSeq(code, GenInstr(NULL, "syscall", NULL, NULL, NULL));
+    AppendSeq(code, GenInstr(finish, NULL, NULL, NULL, NULL));
+  }
+  else{*/
+    AppendSeq(code,GenInstr(NULL,"li","$v0","1",NULL));
+    AppendSeq(code,GenInstr(NULL,"move","$a0",TmpRegName(Expr->Reg),NULL));
+    AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
+    //}
   AppendSeq(code,GenInstr(NULL,"li","$v0","4",NULL));
   AppendSeq(code,GenInstr(NULL,"la","$a0","_nl",NULL));
   AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
-
+  ReleaseTmpReg(reg);
   ReleaseTmpReg(Expr->Reg);
   free(Expr);
 
@@ -275,7 +326,7 @@ struct InstrSeq *doPrint(struct ExprRes *Expr){
 
 extern struct InstrSeq *doPrintList(struct ExprResList *List){
   struct InstrSeq *code;
-  struct ExprRes *temp;
+  struct GenExprRes *temp;
   int reg = AvailTmpReg();
   char *label;
   char *finish;
@@ -285,7 +336,7 @@ extern struct InstrSeq *doPrintList(struct ExprResList *List){
   while (List){
     temp = List->Expr;
     AppendSeq(code, temp->Instrs);
-    if (true == temp->boolean){
+    /*if (true == temp->isBool){
       label = GenLabel();
       finish = GenLabel();
       printf("Printing a boolean\n");
@@ -301,12 +352,12 @@ extern struct InstrSeq *doPrintList(struct ExprResList *List){
       AppendSeq(code, GenInstr(NULL, "syscall", NULL, NULL, NULL));
       AppendSeq(code, GenInstr(finish, NULL, NULL, NULL, NULL));
     }
-    else{
+    else{*/
       printf("Printing an int\n");
       AppendSeq(code, GenInstr(NULL,"li","$v0","1",NULL));
       AppendSeq(code, GenInstr(NULL,"move","$a0",TmpRegName(temp->Reg),NULL));
       AppendSeq(code, GenInstr(NULL,"syscall",NULL,NULL,NULL));
-    }
+      //}
     AppendSeq(code, GenInstr(NULL,"li","$v0","4",NULL));
     AppendSeq(code, GenInstr(NULL,"la","$a0","_sp",NULL));
     AppendSeq(code, GenInstr(NULL,"syscall",NULL,NULL,NULL));
@@ -338,7 +389,8 @@ extern struct InstrSeq *doPrintSP(struct ExprRes *Expr){
   char *loop = GenLabel();
   char *finish = GenLabel();
 
-  code = GenInstr(loop, "blez", TmpRegName(Expr->Reg), finish, NULL);
+  code = Expr->Instrs;
+  AppendSeq(code, GenInstr(loop, "blez", TmpRegName(Expr->Reg), finish, NULL));
   AppendSeq(code, GenInstr(NULL,"li","$v0","4",NULL));
   AppendSeq(code, GenInstr(NULL,"la","$a0","_sp",NULL));
   AppendSeq(code, GenInstr(NULL,"syscall",NULL,NULL,NULL));
@@ -496,14 +548,18 @@ extern struct InstrSeq *doWhile(struct BExprRes *bRes, struct InstrSeq *seq){
   AppendSeq(code, GenInstr(loop, "bne", TmpRegName(bRes->Reg),
 			   TmpRegName(reg), bRes->Label));
   AppendSeq(code, seq);
-  AppendSeq(code, bRes->Instrs);
-  AppendSeq(code, GenInstr(NULL, "j", loop, NULL, NULL));
+  //AppendSeq(code, bRes->Instrs);
+  //AppendSeq(code, GenInstr(NULL, "j", loop, NULL, NULL));
   AppendSeq(code, GenInstr(bRes->Label, NULL, NULL, NULL, NULL));
+  ReleaseTmpReg(reg);
+  ReleaseTmpReg(bRes->Reg);
+  free(bRes);
+  free(seq);
   
   return code;
 }
 
-extern struct ExprResList *doList(struct ExprRes *Res, struct ExprResList *ResList){
+extern struct ExprResList *doList(struct GenExprRes *Res, struct ExprResList *ResList){
   struct ExprResList *list;
 
   list = (struct ExprResList *)malloc(sizeof(struct ExprResList));
@@ -513,61 +569,23 @@ extern struct ExprResList *doList(struct ExprRes *Res, struct ExprResList *ResLi
   return list;
 }
 
-extern struct ExprResList *doListItem(struct ExprRes *Res){
+extern struct ExprResList *doListItem(struct GenExprRes *Res){
   struct ExprResList *list;
 
   list = (struct ExprResList *)malloc(sizeof(struct ExprResList));
   list->Expr = Res;
   list->Next = NULL;
-
-  return list;
-}
-
-extern struct ExprResList *doBList(struct BExprRes *Res, struct ExprResList *ResList){
-  struct ExprRes *res;
-  struct ExprResList *list;
-  
-  res = (struct ExprRes *)malloc(sizeof(struct ExprRes));
-  list = (struct ExprResList *)malloc(sizeof(struct ExprResList));
-  res->Reg = AvailTmpReg();
-  res->Instrs = Res->Instrs;
-  res->boolean = true;
-  AppendSeq(res->Instrs, GenInstr(NULL, "add", TmpRegName(res->Reg),
-				  TmpRegName(Res->Reg), "$zero"));
-  list->Expr = res;
-  list->Next = ResList;
-  ReleaseTmpReg(Res->Reg);
-  free(Res);
-  
-  return list;
-}
-
-extern struct ExprResList *doBListItem(struct BExprRes *Res){
-  struct ExprRes *res;
-  struct ExprResList *list;
-
-  res = (struct ExprRes *)malloc(sizeof(struct ExprRes));
-  list = (struct ExprResList *)malloc(sizeof(struct ExprResList));
-  res->Reg = AvailTmpReg();
-  res->Instrs = Res->Instrs;
-  res->boolean = true;
-  AppendSeq(res->Instrs, GenInstr(NULL, "add", TmpRegName(res->Reg),
-				  TmpRegName(Res->Reg), "$zero"));
-  list->Expr = res;
-  list->Next = NULL;
-  ReleaseTmpReg(Res->Reg);
-  free(Res);
 
   return list;
 }
 
 void printExprList(struct ExprResList *list){
   struct ExprResList *templist;
-  struct ExprRes *temp;
+  struct GenExprRes *temp;
 
   while (templist){
     temp = templist->Expr;
-    if (temp->boolean){
+    if (true == temp->isBool){
       printf("Variable is type: boolean\n");
     }
     else{

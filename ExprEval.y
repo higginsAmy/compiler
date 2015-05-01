@@ -30,6 +30,7 @@ extern struct SymEntry *entry;
 
 %type <string> Id
 %type <boolean> BVal
+%type <GenExprRes> GenExpr
 %type <ExprRes> Number
 %type <ExprRes> Factor
 %type <ExprRes> Term
@@ -73,7 +74,7 @@ Dec             :       Bool Id ';'                                             
                                                                                          SetAttr(entry, (void *)"bool");};
 StmtSeq 	:	Stmt StmtSeq							{$$ = AppendSeq($1, $2);} ;
 StmtSeq		:									{$$ = NULL;};
-Stmt		:	Write Expr ';'							{$$ = doPrint($2);};
+Stmt		:	Write GenExpr ';'						{$$ = doPrint($2);};
 Stmt            :       Write '(' ExprList ')' ';'                                      {$$ = doPrintList($3);};
 Stmt            :       LN ';'                                                          {$$ = doPrintLN();};
 Stmt            :       SP '(' Expr ')' ';'                                             {$$ = doPrintSP($3);};
@@ -82,11 +83,11 @@ Stmt            :       Id '=' BExpr ';'                                        
 Stmt		:	IF '(' BExpr ')' '{' StmtSeq '}'				{$$ = doIf($3, $6);};
 Stmt            :       IF '(' BExpr ')' '{' StmtSeq '}' ELSE '{' StmtSeq '}'           {$$ = doIfElse($3, $6, $10);};
 Stmt            :       WHILE '(' BExpr ')' '{' StmtSeq '}'                             {$$ = doWhile($3, $6);};
-ExprList        :       Expr ',' ExprList                                               {$$ = doList($1, $3);};
-ExprList        :       BExpr ',' ExprList                                              {$$ = doBList($1, $3);};
-ExprList        :       Expr                                                            {$$ = doListItem($1);};
-ExprList        :       BExpr                                                           {$$ = doBListItem($1);};
+ExprList        :       GenExpr ',' ExprList                                            {$$ = doList($1, $3);};
+ExprList        :       GenExpr                                                         {$$ = doListItem($1);};
 ExprList        :                                                                       {$$ = NULL;};
+GenExpr         :       BExpr                                                           {$$ = doGenBool($1);};
+GenExpr         :       Expr                                                            {$$ = doGenInt($1);};
 BExpr           :       BExpr OR BTerm                                                  {$$ = doOR($1, $3);};
 BExpr           :       BTerm                                                           {$$ = $1;};
 BTerm           :       BTerm AND BFactor                                               {$$ = doAND($1, $3);};

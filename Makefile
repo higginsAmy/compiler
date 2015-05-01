@@ -17,10 +17,4 @@ comp: Semantics.c main.c SymTab.c SymTab.h IOMngr.c ExprEval.y Semantics.h
 clean:
 	$(RM) tests *.o
 	$(RM) -rf *.dSYM
-	$(RM) Makefile~
-	$(RM) *.h~
-	$(RM) *.stackdump
-	$(RM) *.c~
-	$(RM) *.y~
-	$(RM) *.l~
-	$(RM) *.txt~
+	$(RM) *~

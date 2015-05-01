@@ -21,6 +21,7 @@ true                                    {return TRUE;}
 false                                   {return FALSE;}
 else                                    {return ELSE;}
 while                                   {return WHILE;}
+printstr                                {return ST;}
 println                                 {return LN;}
 printsp                                 {return SP;}
 print					{return Write;}
@@ -34,6 +35,7 @@ print					{return Write;}
 \>\=                                    {return GTE;}
 \<                                      {return LT;}
 \>                                      {return GT;}
+\"                                      {return '"';}
 \=					{return '=';}
 \!                                      {return '!';}
 \+					{return '+';}
