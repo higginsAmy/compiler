@@ -2,7 +2,7 @@
    Support and semantic action routines.   
 */
 
-#include <strings.h>
+#include <string.h>
 #include <stdlib.h>
 #include "CodeGen.h"
 #include "Semantics.h"
@@ -12,28 +12,16 @@
 extern struct SymTab *table;
 
 /* Semantics support routines */
-extern struct GenExprRes *doGenBool(struct BExprRes *Res){
-  struct GenExprRes *gRes;
+extern struct ExprRes *doConvert(struct BExprRes *Res){
+  struct ExprRes *eRes;
 
-  gRes = (struct GenExprRes *)malloc(sizeof(struct GenExprRes));
-  gRes->Instrs = Res->Instrs;
-  gRes->Reg = Res->Reg;
-  gRes->isBool = true;
+  eRes = (struct ExprRes *)malloc(sizeof(struct ExprRes));
+  eRes->Instrs = Res->Instrs;
+  eRes->Reg = Res->Reg;
+  eRes->isBool = true;
   free(Res);
 
-  return gRes;
-}
-
-extern struct GenExprRes *doGenInt(struct ExprRes *Res){
-  struct GenExprRes *gRes;
-
-  gRes = (struct GenExprRes *)malloc(sizeof(struct GenExprRes));
-  gRes->Instrs = Res->Instrs;
-  gRes->Reg = Res->Reg;
-  gRes->isBool = false;
-  free(Res);
-
-  return gRes;
+  return eRes;
 }
 
 struct ExprRes *doIntLit(char *digits){
@@ -42,6 +30,7 @@ struct ExprRes *doIntLit(char *digits){
   res = (struct ExprRes *) malloc(sizeof(struct ExprRes));
   res->Reg = AvailTmpReg();
   res->Instrs = GenInstr(NULL,"li",TmpRegName(res->Reg),digits,NULL);
+  res->isBool = false;
   
   return res;
 }
@@ -63,51 +52,33 @@ struct BExprRes *doBLit(bool b){
 }
 
 struct ExprRes *doRval(char *name){ 
-  struct ExprRes *res;
+  struct SymEntry *entry = FindName(table, name);
+  struct ExprRes *Res;
   
-  if (!FindName(table, name)) {
+  if (NULL == entry) {
     WriteIndicator(GetCurrentColumn());
     WriteMessage("Undeclared variable");
   }
-  res = (struct ExprRes *) malloc(sizeof(struct ExprRes));
-  res->Reg = AvailTmpReg();
-  res->Instrs = GenInstr(NULL,"lw",TmpRegName(res->Reg),name,NULL);
-  
-  return res;
-}
-
-struct BExprRes *doBval(char *name){
-  struct BExprRes *bRes;
-  
-  if (!FindName(table, name)){
-    WriteIndicator(GetCurrentColumn());
-    WriteMessage("Undeclared variable");
+  Res = (struct ExprRes *) malloc(sizeof(struct ExprRes));
+  Res->Reg = AvailTmpReg();
+  Res->Instrs = GenInstr(NULL,"lw",TmpRegName(Res->Reg),name,NULL);
+  if (0 == strcmp((char *)GetAttr(entry), "bool") && NULL != entry){
+    Res->isBool = true;
+    printf("Variable is a bool.\n");
+  }
+  else{
+    Res->isBool = false;
+    printf("Variable is not a bool.\n");
   }
   
-  bRes = (struct BExprRes *) malloc(sizeof(struct BExprRes));
-  bRes->Label = GenLabel();
-  bRes->Reg = AvailTmpReg();
-  bRes->Instrs = GenInstr(NULL, "lw", TmpRegName(bRes->Reg), name, NULL);
-  
-  return bRes;
-}
-
-extern struct BExprRes *doConvert(struct ExprRes *Res){
-  struct BExprRes *bRes;
-
-  bRes = (struct BExprRes *)malloc(sizeof(struct BExprRes));
-  bRes->Label = GenLabel();
-  bRes->Reg = Res->Reg;
-  bRes->Instrs = Res->Instrs;
-
-  return bRes;
+  return Res;
 }
 
 struct BExprRes *doNOT(struct BExprRes *Res){
   int reg1 = AvailTmpReg();
   char *label = GenLabel();
   char *finish = GenLabel();
-  
+
   AppendSeq(Res->Instrs, GenInstr(NULL, "li", TmpRegName(reg1), "1", NULL));
   AppendSeq(Res->Instrs, GenInstr(NULL, "beq", TmpRegName(Res->Reg),
 				  TmpRegName(reg1), label));
@@ -121,9 +92,45 @@ struct BExprRes *doNOT(struct BExprRes *Res){
   return Res;
 }
 
+struct BExprRes *doNOTe(struct ExprRes *Res){
+  struct BExprRes *bRes;
+  int reg1 = AvailTmpReg();
+  char *label = GenLabel();
+  char *finish = GenLabel();
+
+  if (!Res->isBool){
+    WriteIndicator(GetCurrentColumn());
+    WriteMessage("Type violation: Unable to apply NOT operator to int.");
+    exit(0);
+  }
+
+  bRes = (struct BExprRes *)malloc(sizeof(struct BExprRes));
+  bRes->Instrs = Res->Instrs;
+  bRes->Reg = Res->Reg;
+  bRes->Label = GenLabel();
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "li", TmpRegName(reg1), "1", NULL));
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "beq", TmpRegName(bRes->Reg),
+				  TmpRegName(reg1), label));
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "li", TmpRegName(bRes->Reg), "1", NULL));
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "j", finish, NULL, NULL));
+  AppendSeq(bRes->Instrs, GenInstr(label, NULL, NULL, NULL, NULL));
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "li", TmpRegName(bRes->Reg), "0", NULL));
+  AppendSeq(bRes->Instrs, GenInstr(finish, NULL, NULL, NULL, NULL));
+  ReleaseTmpReg(reg1);
+  free(Res);
+
+  return bRes;
+}
+
 struct ExprRes *doAdd(struct ExprRes *Res1, struct ExprRes *Res2){ 
   int reg;
-   
+
+  if (Res1->isBool || Res2->isBool){
+    WriteIndicator(GetCurrentColumn());
+    WriteMessage("Type violation: Unable to apply ADD operator to bool.");
+    exit(0);
+  }
+  
   reg = AvailTmpReg();
   AppendSeq(Res1->Instrs,Res2->Instrs);
   AppendSeq(Res1->Instrs,GenInstr(NULL,"add",
@@ -141,6 +148,12 @@ struct ExprRes *doAdd(struct ExprRes *Res1, struct ExprRes *Res2){
 struct ExprRes *doSub(struct ExprRes * Res1, struct ExprRes * Res2){
   int reg;
 
+  if (Res1->isBool || Res2->isBool){
+    WriteIndicator(GetCurrentColumn());
+    WriteMessage("Type violation: Unable to apply SUB operator to bool.");
+    exit(0);
+  }
+  
   reg = AvailTmpReg();
   AppendSeq(Res1->Instrs,Res2->Instrs);
   AppendSeq(Res1->Instrs,GenInstr(NULL,"sub",
@@ -157,7 +170,12 @@ struct ExprRes *doSub(struct ExprRes * Res1, struct ExprRes * Res2){
 
 struct ExprRes *doMult(struct ExprRes * Res1, struct ExprRes * Res2){ 
   int reg;
-   
+
+  if (Res1->isBool || Res2->isBool){
+    WriteIndicator(GetCurrentColumn());
+    WriteMessage("Type violation: Unable to apply MUL operator to bool.");
+    exit(0);
+  }
   reg = AvailTmpReg();
   AppendSeq(Res1->Instrs,Res2->Instrs);
   AppendSeq(Res1->Instrs,GenInstr(NULL,"mul",
@@ -175,6 +193,12 @@ struct ExprRes *doMult(struct ExprRes * Res1, struct ExprRes * Res2){
 struct ExprRes *doDiv(struct ExprRes * Res1, struct ExprRes * Res2){
   int reg;
 
+  if (Res1->isBool || Res2->isBool){
+    WriteIndicator(GetCurrentColumn());
+    WriteMessage("Type violation: Unable to apply DIV operator to bool.");
+    exit(0);
+  }
+  
   reg = AvailTmpReg();
   AppendSeq(Res1->Instrs,Res2->Instrs);
   AppendSeq(Res1->Instrs,GenInstr(NULL,"div",
@@ -192,6 +216,12 @@ struct ExprRes *doDiv(struct ExprRes * Res1, struct ExprRes * Res2){
 struct ExprRes *doMod(struct ExprRes * Res1, struct ExprRes * Res2){
   int reg;
 
+  if (Res1->isBool || Res2->isBool){
+    WriteIndicator(GetCurrentColumn());
+    WriteMessage("Type violation: Unable to apply MOD operator to bool.");
+    exit(0);
+  }
+  
   reg = AvailTmpReg();
   AppendSeq(Res1->Instrs,Res2->Instrs);
   AppendSeq(Res1->Instrs,GenInstr(NULL,"rem",
@@ -212,6 +242,12 @@ struct ExprRes *doExp(struct ExprRes *Res1, struct ExprRes *Res2){
   char * err = GenLabel();
   char * zero = GenLabel();
   char * fin = GenLabel();
+
+  if (Res1->isBool || Res2->isBool){
+    WriteIndicator(GetCurrentColumn());
+    WriteMessage("Type violation: Unable to apply MOD operator to bool.");
+    exit(0);
+  }
   
   reg = AvailTmpReg();
   reg2 = AvailTmpReg();
@@ -273,6 +309,12 @@ struct ExprRes *doExp(struct ExprRes *Res1, struct ExprRes *Res2){
 struct ExprRes *doNEG(struct ExprRes *Res1){
   int reg;
 
+  if (Res1->isBool){
+    WriteIndicator(GetCurrentColumn());
+    WriteMessage("Type violation: Unable to apply NEG operator to bool.");
+    exit(0);
+  }
+  
   reg = AvailTmpReg();
   AppendSeq(Res1->Instrs, GenInstr(NULL, "li",
 				   TmpRegName(reg), "-1", NULL));
@@ -286,14 +328,14 @@ struct ExprRes *doNEG(struct ExprRes *Res1){
   return Res1;
 }
 
-struct InstrSeq *doPrint(struct GenExprRes *Expr){ 
+struct InstrSeq *doPrint(struct ExprRes *Expr){ 
   struct InstrSeq *code;
   int reg = AvailTmpReg();
   char *label;
   char *finish;
     
   code = Expr->Instrs;
-  /*  if (Expr->isBool){
+  if (Expr->isBool){
     label = GenLabel();
     finish = GenLabel();
     printf("Printing a boolean\n");
@@ -309,11 +351,12 @@ struct InstrSeq *doPrint(struct GenExprRes *Expr){
     AppendSeq(code, GenInstr(NULL, "syscall", NULL, NULL, NULL));
     AppendSeq(code, GenInstr(finish, NULL, NULL, NULL, NULL));
   }
-  else{*/
+  else{
+    printf("Printing an int\n");
     AppendSeq(code,GenInstr(NULL,"li","$v0","1",NULL));
     AppendSeq(code,GenInstr(NULL,"move","$a0",TmpRegName(Expr->Reg),NULL));
     AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
-    //}
+  }
   AppendSeq(code,GenInstr(NULL,"li","$v0","4",NULL));
   AppendSeq(code,GenInstr(NULL,"la","$a0","_nl",NULL));
   AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
@@ -326,7 +369,7 @@ struct InstrSeq *doPrint(struct GenExprRes *Expr){
 
 extern struct InstrSeq *doPrintList(struct ExprResList *List){
   struct InstrSeq *code;
-  struct GenExprRes *temp;
+  struct ExprRes *temp;
   int reg = AvailTmpReg();
   char *label;
   char *finish;
@@ -336,7 +379,7 @@ extern struct InstrSeq *doPrintList(struct ExprResList *List){
   while (List){
     temp = List->Expr;
     AppendSeq(code, temp->Instrs);
-    /*if (true == temp->isBool){
+    if (temp->isBool){
       label = GenLabel();
       finish = GenLabel();
       printf("Printing a boolean\n");
@@ -352,12 +395,12 @@ extern struct InstrSeq *doPrintList(struct ExprResList *List){
       AppendSeq(code, GenInstr(NULL, "syscall", NULL, NULL, NULL));
       AppendSeq(code, GenInstr(finish, NULL, NULL, NULL, NULL));
     }
-    else{*/
+    else{
       printf("Printing an int\n");
       AppendSeq(code, GenInstr(NULL,"li","$v0","1",NULL));
       AppendSeq(code, GenInstr(NULL,"move","$a0",TmpRegName(temp->Reg),NULL));
       AppendSeq(code, GenInstr(NULL,"syscall",NULL,NULL,NULL));
-      //}
+    }
     AppendSeq(code, GenInstr(NULL,"li","$v0","4",NULL));
     AppendSeq(code, GenInstr(NULL,"la","$a0","_sp",NULL));
     AppendSeq(code, GenInstr(NULL,"syscall",NULL,NULL,NULL));
@@ -403,14 +446,14 @@ extern struct InstrSeq *doPrintSP(struct ExprRes *Expr){
   return code;
 }
 
-struct InstrSeq *doAssign(char *name, struct ExprRes * Expr){ 
+struct InstrSeq *doAssign(char *name, struct ExprRes *Expr){ 
   struct InstrSeq *code;
-
+  
   if (!FindName(table, name)) {
     WriteIndicator(GetCurrentColumn());
     WriteMessage("Undeclared variable");
   }
-
+  
   code = Expr->Instrs;
   AppendSeq(code, GenInstr(NULL, "sw", TmpRegName(Expr->Reg), name, NULL));
   ReleaseTmpReg(Expr->Reg);
@@ -438,6 +481,12 @@ extern struct InstrSeq *doBAssign(char *name, struct BExprRes *Res){
 extern struct BExprRes *doBExpr(char *op, struct ExprRes *Res1,  struct ExprRes *Res2){
   struct BExprRes * bRes;
 
+  if (Res1->isBool || Res2->isBool){
+    WriteIndicator(GetCurrentColumn());
+    WriteMessage("Type violation: Unable to apply INEQ operator to bool.");
+    exit(0);
+  }
+  
   bRes = (struct BExprRes *) malloc(sizeof(struct BExprRes));
   bRes->Label = GenLabel();
   bRes->Reg = AvailTmpReg();
@@ -559,7 +608,7 @@ extern struct InstrSeq *doWhile(struct BExprRes *bRes, struct InstrSeq *seq){
   return code;
 }
 
-extern struct ExprResList *doList(struct GenExprRes *Res, struct ExprResList *ResList){
+extern struct ExprResList *doList(struct ExprRes *Res, struct ExprResList *ResList){
   struct ExprResList *list;
 
   list = (struct ExprResList *)malloc(sizeof(struct ExprResList));
@@ -569,7 +618,7 @@ extern struct ExprResList *doList(struct GenExprRes *Res, struct ExprResList *Re
   return list;
 }
 
-extern struct ExprResList *doListItem(struct GenExprRes *Res){
+extern struct ExprResList *doListItem(struct ExprRes *Res){
   struct ExprResList *list;
 
   list = (struct ExprResList *)malloc(sizeof(struct ExprResList));
@@ -581,11 +630,11 @@ extern struct ExprResList *doListItem(struct GenExprRes *Res){
 
 void printExprList(struct ExprResList *list){
   struct ExprResList *templist;
-  struct GenExprRes *temp;
+  struct ExprRes *temp;
 
   while (templist){
     temp = templist->Expr;
-    if (true == temp->isBool){
+    if (temp->isBool){
       printf("Variable is type: boolean\n");
     }
     else{

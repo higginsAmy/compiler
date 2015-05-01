@@ -8,8 +8,8 @@ num1 = 10;
 num2 = 20;
 b1 = true;
 b2 = !b1;
-b3 = b1 || b2;
-b4 = b1 && b2;
+b3 = num1 < num2 || num1 > num2;
+b4 = num1 < num2 && num1 > num2;
 if (num1 < 2 || (1*2) == 2) {
    print num1;
 }

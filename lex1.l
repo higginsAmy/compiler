@@ -21,9 +21,9 @@ true                                    {return TRUE;}
 false                                   {return FALSE;}
 else                                    {return ELSE;}
 while                                   {return WHILE;}
-printstr                                {return ST;}
-println                                 {return LN;}
-printsp                                 {return SP;}
+printstr                                {return Write_STR;}
+println                                 {return Write_LN;}
+printsp                                 {return Write_SP;}
 print					{return Write;}
 {letter}({letter}|{digit})*	        {return Ident;}
 {digit}{digit}*		                {return IntLit;}
