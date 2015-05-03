@@ -13,3 +13,4 @@ printsp(1 * 3);
 print h;
 printsp(h);
 print k;
+printstr("hi");

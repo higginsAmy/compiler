@@ -54,6 +54,10 @@ struct BExprRes *doBLit(bool b){
 struct ExprRes *doRval(char *name){ 
   struct SymEntry *entry = FindName(table, name);
   struct ExprRes *Res;
+  char *Name = (char *)malloc((strlen(name)+5)*sizeof(char));
+
+  strcpy(Name, "var_");
+  strcat(Name, name);
   
   if (NULL == entry) {
     WriteIndicator(GetCurrentColumn());
@@ -61,7 +65,7 @@ struct ExprRes *doRval(char *name){
   }
   Res = (struct ExprRes *) malloc(sizeof(struct ExprRes));
   Res->Reg = AvailTmpReg();
-  Res->Instrs = GenInstr(NULL,"lw",TmpRegName(Res->Reg),name,NULL);
+  Res->Instrs = GenInstr(NULL, "lw", TmpRegName(Res->Reg), Name, NULL);
   if (0 == strcmp((char *)GetAttr(entry), "bool") && NULL != entry){
     Res->isBool = true;
     printf("Variable is a bool.\n");
@@ -446,6 +450,30 @@ extern struct InstrSeq *doPrintSP(struct ExprRes *Expr){
   return code;
 }
 
+extern struct InstrSeq *doPrintSTR(char *string){
+  int reg = AvailTmpReg();
+  struct InstrSeq *code;
+  struct SymEntry *entry;
+  char *varName = GenLabel();
+  char newVar[strlen(varName) + 5];
+
+
+  strcpy(newVar, "str_");
+  strcat(newVar, varName);
+  EnterName(table, newVar, &entry);
+  SetAttr(entry, "string");
+  SetStrVal(entry, (void *)string);
+  
+  code = GenInstr(NULL,"li","$v0","4",NULL);
+  AppendSeq(code, GenInstr(NULL,"la","$a0", newVar, NULL));
+  AppendSeq(code, GenInstr(NULL,"syscall",NULL,NULL,NULL));
+  AppendSeq(code, GenInstr(NULL, "la", "$a0", "_nl", NULL));
+  AppendSeq(code, GenInstr(NULL, "syscall", NULL, NULL, NULL));
+  ReleaseTmpReg(reg);
+
+  return code;
+}
+
 struct InstrSeq *doAssign(char *name, struct ExprRes *Expr){ 
   struct InstrSeq *code;
   
@@ -453,9 +481,12 @@ struct InstrSeq *doAssign(char *name, struct ExprRes *Expr){
     WriteIndicator(GetCurrentColumn());
     WriteMessage("Undeclared variable");
   }
+  char *Name = (char *)malloc((strlen(name)+5)*sizeof(char));
+  strcpy(Name, "var_");
+  strcat(Name, name);
   
   code = Expr->Instrs;
-  AppendSeq(code, GenInstr(NULL, "sw", TmpRegName(Expr->Reg), name, NULL));
+  AppendSeq(code, GenInstr(NULL, "sw", TmpRegName(Expr->Reg), Name, NULL));
   ReleaseTmpReg(Expr->Reg);
   free(Expr);
   
@@ -469,9 +500,13 @@ extern struct InstrSeq *doBAssign(char *name, struct BExprRes *Res){
     WriteIndicator(GetCurrentColumn());
     WriteMessage("Undeclared variable");
   }
+  char *Name = (char *)malloc((strlen(name)+2)*sizeof(char));
+
+  strcpy(Name, "var_");
+  strcat(Name, name);
   
   code = Res->Instrs;
-  AppendSeq(code, GenInstr(NULL, "sw", TmpRegName(Res->Reg), name, NULL));
+  AppendSeq(code, GenInstr(NULL, "sw", TmpRegName(Res->Reg), Name, NULL));
   ReleaseTmpReg(Res->Reg);
   free(Res);
   
@@ -502,51 +537,76 @@ extern struct BExprRes *doBExpr(char *op, struct ExprRes *Res1,  struct ExprRes 
   return bRes;
 }
 
-extern struct BExprRes *doOR(struct BExprRes *Res1, struct BExprRes *Res2){
+extern struct BExprRes *doOR(struct ExprRes *Res1, struct ExprRes *Res2){
+  struct BExprRes *bRes;
   char *label = GenLabel();
+  char *label2 = GenLabel();
   char *finish = GenLabel();
   int reg1 = AvailTmpReg();
-  
+
+  if (!Res1->isBool || !Res2->isBool){
+    WriteIndicator(GetCurrentColumn());
+    WriteMessage("Type violation: Unable to apply OR operator to int.");
+    exit(0);
+  }
+
+  bRes = (struct BExprRes *)malloc(sizeof(struct BExprRes));
   AppendSeq(Res1->Instrs, Res2->Instrs);
-  AppendSeq(Res1->Instrs, GenInstr(NULL, "li", TmpRegName(reg1), "1", NULL));
-  AppendSeq(Res1->Instrs, GenInstr(NULL, "beq", TmpRegName(Res1->Reg),
+  bRes->Instrs = Res1->Instrs;
+  bRes->Reg = Res1->Reg;
+  bRes->Label = GenLabel();
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "li", TmpRegName(reg1), "1", NULL));
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "beq", TmpRegName(Res1->Reg),
 				   TmpRegName(reg1), label));
-  AppendSeq(Res1->Instrs, GenInstr(NULL, "bne", TmpRegName(Res2->Reg),
-				   TmpRegName(reg1), Res2->Label));
-  AppendSeq(Res1->Instrs, GenInstr(label, NULL, NULL, NULL, NULL));
-  AppendSeq(Res1->Instrs, GenInstr(NULL, "li", TmpRegName(Res1->Reg), "1", NULL));
-  AppendSeq(Res1->Instrs, GenInstr(NULL, "j", finish, NULL, NULL));
-  AppendSeq(Res1->Instrs, GenInstr(Res2->Label, NULL, NULL, NULL, NULL));
-  AppendSeq(Res1->Instrs, GenInstr(NULL, "li", TmpRegName(Res1->Reg), "0", NULL));
-  AppendSeq(Res1->Instrs, GenInstr(finish, NULL, NULL, NULL, NULL));
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "bne", TmpRegName(Res2->Reg),
+				   TmpRegName(reg1), label2));
+  AppendSeq(bRes->Instrs, GenInstr(label, NULL, NULL, NULL, NULL));
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "li", TmpRegName(bRes->Reg), "1", NULL));
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "j", finish, NULL, NULL));
+  AppendSeq(bRes->Instrs, GenInstr(label2, NULL, NULL, NULL, NULL));
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "li", TmpRegName(bRes->Reg), "0", NULL));
+  AppendSeq(bRes->Instrs, GenInstr(finish, NULL, NULL, NULL, NULL));
   ReleaseTmpReg(reg1);
   ReleaseTmpReg(Res2->Reg);
+  free(Res1);
   free(Res2);
   
-  return Res1;
+  return bRes;
 }
 
-extern struct BExprRes *doAND(struct BExprRes *Res1, struct BExprRes *Res2){
+extern struct BExprRes *doAND(struct ExprRes *Res1, struct ExprRes *Res2){
+  struct BExprRes *bRes;
   char *label = GenLabel();
   char *finish = GenLabel();
   int reg1 = AvailTmpReg();
-  
+
+  if (!Res1->isBool || !Res2->isBool){
+    WriteIndicator(GetCurrentColumn());
+    WriteMessage("Type violation: Unable to apply AND operator to int.");
+    exit(0);
+  }
+
+  bRes = (struct BExprRes *)malloc(sizeof(struct BExprRes));
   AppendSeq(Res1->Instrs, Res2->Instrs);
-  AppendSeq(Res1->Instrs, GenInstr(NULL, "li", TmpRegName(reg1), "1", NULL));
-  AppendSeq(Res1->Instrs, GenInstr(NULL, "bne", TmpRegName(Res1->Reg),
+  bRes->Instrs = Res1->Instrs;
+  bRes->Reg = Res1->Reg;
+  bRes->Label = GenLabel();
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "li", TmpRegName(reg1), "1", NULL));
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "bne", TmpRegName(Res1->Reg),
 				   TmpRegName(reg1), label));
-  AppendSeq(Res1->Instrs, GenInstr(NULL, "bne", TmpRegName(Res2->Reg),
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "bne", TmpRegName(Res2->Reg),
 				   TmpRegName(reg1), label));
-  AppendSeq(Res1->Instrs, GenInstr(NULL, "li", TmpRegName(Res1->Reg), "1", NULL));
-  AppendSeq(Res1->Instrs, GenInstr(NULL, "j", finish, NULL, NULL));
-  AppendSeq(Res1->Instrs, GenInstr(label, NULL, NULL, NULL, NULL));
-  AppendSeq(Res1->Instrs, GenInstr(NULL, "li", TmpRegName(Res1->Reg), "0", NULL));
-  AppendSeq(Res1->Instrs, GenInstr(finish, NULL, NULL, NULL, NULL));
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "li", TmpRegName(bRes->Reg), "1", NULL));
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "j", finish, NULL, NULL));
+  AppendSeq(bRes->Instrs, GenInstr(label, NULL, NULL, NULL, NULL));
+  AppendSeq(bRes->Instrs, GenInstr(NULL, "li", TmpRegName(bRes->Reg), "0", NULL));
+  AppendSeq(bRes->Instrs, GenInstr(finish, NULL, NULL, NULL, NULL));
   ReleaseTmpReg(reg1);
   ReleaseTmpReg(Res2->Reg);
+  free(Res1);
   free(Res2);
 
-  return Res1;
+  return bRes;
 }
 
 extern struct InstrSeq *doIf(struct BExprRes *bRes, struct InstrSeq * seq){
@@ -587,23 +647,43 @@ extern struct InstrSeq *doIfElse(struct BExprRes *bRes, struct InstrSeq *seq, st
   return code;
 }
 
-extern struct InstrSeq *doWhile(struct BExprRes *bRes, struct InstrSeq *seq){
+extern struct InstrSeq *doWhile(struct ExprRes *Res, struct InstrSeq *seq){
   struct InstrSeq *code;
+  struct InstrSeq *seq2;
+  char *label = GenLabel();
   char *loop = GenLabel();
   int reg = AvailTmpReg();
+  int reg2 = AvailTmpReg();
 
-  code = bRes->Instrs;
+  if (!Res->isBool){
+    WriteIndicator(GetCurrentColumn());
+    WriteMessage("Type violation: Unable to apply WHILE operator to int.");
+    exit(0);
+  }
+
+  //seq2 = (struct InstrSeq *)malloc(sizeof(struct InstrSeq));
+  //seq2 = Res->Instrs;
+  code = GenInstr(NULL, NULL, NULL, NULL, NULL);
+  AppendSeq(code, Res->Instrs);
   AppendSeq(code, GenInstr(NULL, "li", TmpRegName(reg), "1", NULL));
-  AppendSeq(code, GenInstr(loop, "bne", TmpRegName(bRes->Reg),
-			   TmpRegName(reg), bRes->Label));
+  AppendSeq(code, GenInstr(loop, "bne", TmpRegName(Res->Reg),
+			   TmpRegName(reg), label));
   AppendSeq(code, seq);
-  //AppendSeq(code, bRes->Instrs);
-  //AppendSeq(code, GenInstr(NULL, "j", loop, NULL, NULL));
-  AppendSeq(code, GenInstr(bRes->Label, NULL, NULL, NULL, NULL));
+  //AppendSeq(code, Res->Instrs);
+  //while(NULL != Res->Instrs){
+  //AppendSeq(code, GenInstr(strdup(Res->Instrs->Label), strdup(Res->Instrs->OpCode),
+  //			     strdup(Res->Instrs->Oprnd1), strdup(Res->Instrs->Oprnd2),
+  //			     strdup(Res->Instrs->Oprnd3)));
+  //Res->Instrs = Res->Instrs->Next;
+  //}
+  //AppendSeq(code, seq2);
+  AppendSeq(code, GenInstr(NULL, "j", loop, NULL, NULL));
+  AppendSeq(code, GenInstr(label, NULL, NULL, NULL, NULL));
   ReleaseTmpReg(reg);
-  ReleaseTmpReg(bRes->Reg);
-  free(bRes);
-  free(seq);
+  ReleaseTmpReg(reg2);
+  ReleaseTmpReg(Res->Reg);
+  free(Res);
+  //  free(seq2);
   
   return code;
 }
@@ -644,6 +724,32 @@ void printExprList(struct ExprResList *list){
   }
 }
 
+extern struct InstrSeq *dupStruct(struct InstrSeq *Instrs){
+  struct InstrSeq *seq = (struct InstrSeq *)malloc(sizeof(struct InstrSeq));
+
+  while(NULL != Instrs->Next){
+    seq->Label = strdup(Instrs->Label);
+    seq->OpCode = strdup(Instrs->OpCode);
+    seq->Oprnd1 = strdup(Instrs->Oprnd1);
+    seq->Oprnd2 = strdup(Instrs->Oprnd2);
+    seq->Oprnd3 = strdup(Instrs->Oprnd3);
+    seq->Next = dupStruct(Instrs->Next);
+
+    Instrs = Instrs->Next;
+  }
+  while (NULL != seq->Next){
+    seq = seq->Next;
+  }
+  seq->Label = strdup(Instrs->Label);
+  seq->OpCode = strdup(Instrs->OpCode);
+  seq->Oprnd1 = strdup(Instrs->Oprnd1);
+  seq->Oprnd2 = strdup(Instrs->Oprnd2);
+  seq->Oprnd3 = strdup(Instrs->Oprnd3);
+  seq->Next = NULL;
+  
+  return seq;
+}
+
 void Finish(struct InstrSeq *Code){
   struct InstrSeq *code;
   struct SymEntry *entry;
@@ -667,8 +773,13 @@ void Finish(struct InstrSeq *Code){
   
   entry = FirstEntry(table);
   while (entry) {
-   AppendSeq(code,GenInstr((char *) GetName(entry),".word","0",NULL,NULL));
-   entry = NextEntry(table, entry);
+    if (0 == strcmp((char *)GetAttr(entry), "string")){
+      AppendSeq(code, GenInstr((char *)GetName(entry), ".asciiz", (char *)GetStrVal(entry), NULL, NULL));
+    }
+    else{
+      AppendSeq(code,GenInstr((char *) GetName(entry),".word","0",NULL,NULL));
+    }
+    entry = NextEntry(table, entry);
   }
   
   WriteSeq(code);

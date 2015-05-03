@@ -1,10 +1,28 @@
-int x;
-int y;
+1. int h;
 
-x = 4;
-y = 5;
-while (x < y){
-      print x;
-      x = x + 1;
-}
-print y;
+2. int k;
+
+3. h = 4;
+
+4. k = 5;
+
+5. ½"
+6. println;
+
+7. print k;
+
+8. prin
+9. print h;
+
+10. prin
+11. print k;
+
+12. prin
+13. print h;
+
+14. prin
+15. print k;
+
+16. print "hi";
+      ^
+Illegal Character in YACC

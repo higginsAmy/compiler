@@ -14,6 +14,8 @@ struct SymTab {
 struct SymEntry	{
   char *Name;
   void	*Attributes;
+  void *strVal;
+  long elements;
   struct SymEntry *Next;	
 };
 
@@ -45,6 +47,10 @@ struct SymEntry	*FindName(struct SymTab	*ATable, const char *Name);
 
 void SetAttr(struct SymEntry *AnEntry, void *Attributes);
 void *GetAttr(struct SymEntry *AnEntry);	
+void SetStrVal(struct SymEntry *AnEntry, char *string);
+void *GetStrVal(struct SymEntry *AnEntry);
+void SetElements(struct SymEntry *AnEntry, long num);
+long GetElements(struct SymEntry *AnEntry);
 const char *GetName(struct SymEntry *AnEntry);
 
 /* These two functions can be used to enumerate	the contents of	a table.		

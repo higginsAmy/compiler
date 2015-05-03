@@ -20,7 +20,7 @@ extern struct SymEntry *entry;
 
 %union {
   long val;
-  char * string;
+  char *string;
   bool boolean;
   struct ExprRes * ExprRes;
   struct InstrSeq * InstrSeq;
@@ -28,18 +28,22 @@ extern struct SymEntry *entry;
   struct ExprResList *ExprResList;
 }
 
+//%type <val> EVal
 %type <string> Id
-%type <string> STRING
+%type <string> String
 %type <boolean> BVal
 %type <ExprRes> Number
 %type <ExprRes> Factor
 %type <ExprRes> Term
 %type <ExprRes> Expr
+%type <ExprRes> OExpr
+%type <ExprRes> AExpr
+%type <ExprRes> CExpr
 %type <ExprResList> ExprList
 %type <InstrSeq> StmtSeq
 %type <InstrSeq> Stmt
 %type <BExprRes> BFactor
-%type <BExprRes> BTerm
+ //%type <BExprRes> BTerm
 %type <BExprRes> BExpr
 
 %token Ident 		
@@ -63,6 +67,8 @@ extern struct SymEntry *entry;
 %token GTE
 %token LT
 %token GT
+%token STR
+%token DQ
 
 %%
 
@@ -73,41 +79,45 @@ Dec		:	Int Id ';'	                                                {EnterName(tab
                                                                                          SetAttr(entry, (void *)"int");};
 Dec             :       Bool Id ';'                                                     {EnterName(table, $2, &entry);
                                                                                          SetAttr(entry, (void *)"bool");};
+//Dec             :       Int Id '[' EVal ']' ';'                                         {EnterName(table, $2, &entry);
+//                                                                                         SetAttr(entry, (void *)"int[]");};
 StmtSeq 	:	Stmt StmtSeq							{$$ = AppendSeq($1, $2);} ;
 StmtSeq		:									{$$ = NULL;};
+//EVal            :       Expr                                                            {$$ = getVal($1);};
 Stmt		:	Write Expr ';'  						{$$ = doPrint($2);};
 Stmt            :       Write '(' ExprList ')' ';'                                      {$$ = doPrintList($3);};
 Stmt            :       Write_LN ';'                                                    {$$ = doPrintLN();};
 Stmt            :       Write_SP '(' Expr ')' ';'                                       {$$ = doPrintSP($3);};
-//Stmt            :       Write_STR '"' STRING '"' ';'                                    {$$ = doPrintSTR($3);};
+Stmt            :       Write_STR '(' String ')' ';'                                    {$$ = doPrintSTR($3);};
+Stmt            :       Write_STR '(' Id ')' ';'                                        {$$ = doPrintSTR($3);};
 Stmt		:	Id '=' Expr ';'							{$$ = doAssign($1, $3);};
-Stmt            :       Id '=' BExpr ';'                                                {$$ = doBAssign($1, $3);};
 Stmt		:	IF '(' BExpr ')' '{' StmtSeq '}'				{$$ = doIf($3, $6);};
 Stmt            :       IF '(' BExpr ')' '{' StmtSeq '}' ELSE '{' StmtSeq '}'           {$$ = doIfElse($3, $6, $10);};
-Stmt            :       WHILE '(' BExpr ')' '{' StmtSeq '}'                             {$$ = doWhile($3, $6);};
+Stmt            :       WHILE '(' Expr ')' '{' StmtSeq '}'                              {$$ = doWhile($3, $6);};
 ExprList        :       Expr ',' ExprList                                               {$$ = doList($1, $3);};
 ExprList        :       Expr                                                            {$$ = doListItem($1);};
 ExprList        :                                                                       {$$ = NULL;};
 Expr            :       BExpr                                                           {$$ = doConvert($1);};
-BExpr           :       BExpr OR BTerm                                                  {$$ = doOR($1, $3);};
-BExpr           :       BTerm                                                           {$$ = $1;};
-BTerm           :       BTerm AND BFactor                                               {$$ = doAND($1, $3);};
-BTerm           :       BFactor                                                         {$$ = $1;};
-BFactor         :       '!' BFactor                                                     {$$ = doNOT($2);};
+BExpr           :       Expr OR OExpr                                                   {$$ = doOR($1, $3);};
+Expr            :       OExpr                                                           {$$ = $1;};
+BExpr           :       OExpr AND AExpr                                                 {$$ = doAND($1, $3);};
+OExpr           :       AExpr                                                           {$$ = $1;};
+AExpr           :       BFactor                                                         {$$ = doConvert($1);};
 BFactor         :       '!' Expr                                                        {$$ = doNOTe($2);};
-BFactor		:	Expr EQ Expr							{$$ = doBExpr("seq", $1, $3);};
-BFactor         :       Expr NEQ Expr                                                   {$$ = doBExpr("sne", $1, $3);};
-BFactor         :       Expr LTE Expr                                                   {$$ = doBExpr("sle", $1, $3);};
-BFactor         :       Expr GTE Expr                                                   {$$ = doBExpr("sge", $1, $3);};
-BFactor         :       Expr LT Expr                                                    {$$ = doBExpr("slt", $1, $3);};
-BFactor         :       Expr GT Expr                                                    {$$ = doBExpr("sgt", $1, $3);};
+BFactor		:	AExpr EQ AExpr							{$$ = doBExpr("seq", $1, $3);};
+BFactor         :       AExpr NEQ AExpr                                                 {$$ = doBExpr("sne", $1, $3);};
+BFactor         :       AExpr LTE AExpr                                                 {$$ = doBExpr("sle", $1, $3);};
+BFactor         :       AExpr GTE AExpr                                                 {$$ = doBExpr("sge", $1, $3);};
+BFactor         :       AExpr LT AExpr                                                  {$$ = doBExpr("slt", $1, $3);};
+BFactor         :       AExpr GT AExpr                                                  {$$ = doBExpr("sgt", $1, $3);};
 BFactor         :       '(' BExpr ')'                                                   {$$ = $2;};
 BFactor         :       BVal                                                            {$$ = doBLit($1);};
 BVal            :       TRUE                                                            {$$ = true;};
 BVal            :       FALSE                                                           {$$ = false;};
-Expr		:	Expr '+' Term							{$$ = doAdd($1, $3);};
-Expr            :       Expr '-' Term                                                   {$$ = doSub($1, $3);};
-Expr		:	Term								{$$ = $1;};
+AExpr           :       CExpr                                                           {$$ = $1;};
+CExpr		:	CExpr '+' Term							{$$ = doAdd($1, $3);};
+CExpr           :       CExpr '-' Term                                                  {$$ = doSub($1, $3);};
+CExpr		:	Term								{$$ = $1;};
 Term		:	Term '*' Factor							{$$ = doMult($1, $3);};
 Term            :       Term '/' Factor                                                 {$$ = doDiv($1, $3);};
 Term            :       Term '%' Factor                                                 {$$ = doMod($1, $3);};
@@ -118,7 +128,8 @@ Number          :       Id                                                      
 Number          :       '-' Number                                                      {$$ = doNEG($2);};
 Number          :       '(' Expr ')'                                                    {$$ = $2;};
 Number          :       IntLit                                                          {$$ = doIntLit(yytext);};
-Id		: 	Ident								{$$ = strdup(yytext);}
+Id		: 	Ident								{$$ = strdup(yytext);};
+String          :       STR                                                             {$$ = strdup(yytext);}
 
 %%
 

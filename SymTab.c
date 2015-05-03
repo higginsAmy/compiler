@@ -41,24 +41,25 @@ void DestroySymTab(struct SymTab *ATable){
 bool EnterName(struct SymTab *ATable, const char *Name,	struct SymEntry	**AnEntry){
   struct SymEntry *temp;
   struct SymEntry *new_entry;
-  char *name;
+  char *name = (char *)malloc((strlen(Name)+5)*sizeof(char));
   int hash;
 
-  //strcpy(name, "_");
-  //strcat(name, Name);
-  if (NULL != FindName(ATable, Name)){
-    *AnEntry = FindName(ATable, Name);
+  strcpy(name, "var_");
+  strcat(name, Name);
+  if (NULL != FindName(ATable, name)){
+    *AnEntry = FindName(ATable, name);
     return false;
   }
-  hash = hash_code(Name, ATable->Size);
+  hash = hash_code(name, ATable->Size);
   //printf("Hashed name %s to location %d.\n", Name, hash);
   temp = ATable->Contents[hash];
-  name = strdup(Name);
+  //name = strdup(Name);
   //printf("Storing in Symbol Table: %s\n", name);
   new_entry = (struct SymEntry *)malloc(sizeof(struct SymEntry));
   new_entry->Name = name;
   new_entry->Next = NULL;
   new_entry->Attributes = NULL;
+  new_entry->strVal = NULL;
   if (NULL != temp){
     while (NULL != temp->Next){
       temp = temp->Next;
@@ -76,12 +77,15 @@ bool EnterName(struct SymTab *ATable, const char *Name,	struct SymEntry	**AnEntr
 struct SymEntry	*FindName(struct SymTab	*ATable, const char *Name){
   struct SymEntry *entry = FirstEntry(ATable);
   struct SymEntry *next;
+  char *name = (char *)malloc((strlen(Name)+5)*sizeof(char));
 
+  strcpy(name, "var_");
+  strcat(name, Name);
   while (NULL != entry){
     //printf("Entry isn't null.\n");
     next = NextEntry(ATable, entry);
     //printf("String comparison\n");
-    if (0 == strcmp(entry->Name, Name)){
+    if (0 == strcmp(entry->Name, name)){
       //printf("Duplicate Name Found!\n");
       return entry;
     }
@@ -100,6 +104,22 @@ void SetAttr(struct SymEntry *AnEntry, void *Attributes){
 void *GetAttr(struct SymEntry *AnEntry){
   //printf("Getting Attributes of %s- %d\n", AnEntry->Name, AnEntry->Attributes);
   return AnEntry->Attributes;
+}
+
+void SetStrVal(struct SymEntry *AnEntry, char *string){
+  AnEntry->strVal = string;
+}
+
+void *GetStrVal(struct SymEntry *AnEntry){
+  return AnEntry->strVal;
+}
+
+void SetElements(struct SymEntry *AnEntry, long num){
+  AnEntry->elements = num;
+}
+
+long GetElements(struct SymEntry *AnEntry){
+  return AnEntry->elements;
 }
 
 const char *GetName(struct SymEntry *AnEntry){

@@ -35,7 +35,7 @@ print					{return Write;}
 \>\=                                    {return GTE;}
 \<                                      {return LT;}
 \>                                      {return GT;}
-\"                                      {return '"';}
+\"                                      {return DQ;}
 \=					{return '=';}
 \!                                      {return '!';}
 \+					{return '+';}
@@ -49,15 +49,18 @@ print					{return Write;}
 \{					{return '{';}
 \}					{return '}';}
 \(					{return '(';}
-\)					{return ')';}
+\)    					{return ')';}
+\[                                      {return '[';}
+\]                                      {return ']';}
 
-[ ]				{}
-\t				{}
-\r				{}
-\n				{}
+[ ]				        {}
+\t				        {}
+\r				        {}
+\n				        {}
 
-.				{WriteIndicator(GetCurrentColumn());
-				   WriteMessage("Illegal Character in lex");}
+\".*\"                                  {return STR;}
+.				        {WriteIndicator(GetCurrentColumn());
+                                         WriteMessage("Illegal Character in Lex.");}
 
 %%
 
