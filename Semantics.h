@@ -5,6 +5,18 @@
 #include <stdbool.h>
 
 /* Semantic Records */
+struct FunctList{
+  struct Funct *function;
+  struct FunctList *Next;
+};
+
+struct Funct{
+  char *name;
+  char *type;
+  struct InstrSeq *Instrs;
+  struct SymTab *table;
+};
+
 struct IdList {
   struct SymEntry *TheEntry;
   struct ExprRes *Expr;
@@ -61,10 +73,14 @@ extern struct BExprRes *doAND(struct ExprRes *Res1, struct ExprRes *Res2);
 extern struct InstrSeq *doIf(struct BExprRes *bRes, struct InstrSeq *seq);
 extern struct InstrSeq *doIfElse(struct BExprRes *bRes, struct InstrSeq *seq, struct InstrSeq *seq2);
 extern struct InstrSeq *doWhile(struct ExprRes *bRes, struct InstrSeq *seq);
+void doPLFunctDec(char *type, char *Id, struct InstrSeq *Seq);
+extern struct InstrSeq *doPLFunct(char *Id);
+extern struct InstrSeq *doReturn(struct ExprRes *Res);
 extern struct ExprResList *doList(struct ExprRes *Res, struct ExprResList *ResList);
 extern struct ExprResList *doListItem(struct ExprRes *Res);
 extern struct IdList *doIdList(char *Id, struct IdList *List);
 extern struct IdList *doArrIdList(char *Id, struct ExprRes *Res, struct IdList *List);
+void addFitem(struct Funct *function);
 extern struct InstrSeq *dupStruct(struct InstrSeq *Instrs);
 extern void printExprList(struct ExprResList *list);
 extern void Finish(struct InstrSeq *Code);

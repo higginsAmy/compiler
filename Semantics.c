@@ -10,6 +10,7 @@
 #include "IOMngr.h"
 
 extern struct SymTab *table;
+extern struct FunctList *fList;
 
 /* Semantics support routines */
 struct InstrSeq *doRead(struct IdList *List){
@@ -552,15 +553,16 @@ extern struct InstrSeq *doPrintSTR(char *string){
   struct InstrSeq *code;
   struct SymEntry *entry;
   char *varName = GenLabel();
-  char newVar[strlen(varName) + 5];
+  char *newVar;
   char *newVarName;
 
+  newVar = (char *)malloc((strlen(varName) + 5) * sizeof(char));
   strcpy(newVar, "str_");
   strcat(newVar, varName);
   EnterName(table, newVar, &entry);
   SetAttr(entry, "string");
   SetStrVal(entry, (void *)string);
-  newVarName = (char *)malloc((strlen(varName) + 9));
+  newVarName = (char *)malloc((strlen(varName) + 9) * sizeof(char));
   strcpy(newVarName, "var_str_");
   strcat(newVarName, varName);
   
@@ -570,6 +572,7 @@ extern struct InstrSeq *doPrintSTR(char *string){
   AppendSeq(code, GenInstr(NULL, "la", "$a0", "_nl", NULL));
   AppendSeq(code, GenInstr(NULL, "syscall", NULL, NULL, NULL));
   ReleaseTmpReg(reg);
+  free(newVar);
   free(newVarName);
 
   return code;
@@ -913,6 +916,55 @@ extern struct InstrSeq *doWhile(struct ExprRes *Res, struct InstrSeq *seq){
   return code;
 }
 
+void doPLFunctDec(char *type, char *Id, struct InstrSeq *Seq){
+  struct Funct *function;
+  struct SymTab *table;
+
+  table = CreateSymTab(10);
+  function = (struct Funct *)malloc(sizeof(struct Funct));
+  function->name = strdup(Id);
+  function->type = strdup(type);
+  function->Instrs = Seq;
+  function->table = table;
+
+  addFitem(function);
+}
+
+extern struct InstrSeq *doPLFunct(char *Id){
+  struct InstrSeq *code;
+
+  code = GenInstr(NULL, "jal", Id, NULL, NULL);
+  return code;
+}
+
+extern struct InstrSeq *doReturn(struct ExprRes *Res){
+  struct InstrSeq *code;
+
+  code = Res->Instrs;
+  AppendSeq(code, GenInstr(NULL, "move", "$v0", TmpRegName(Res->Reg), NULL));
+  AppendSeq(code, GenInstr(NULL, "jr", "$ra", NULL, NULL));
+	    
+  return code;
+}
+
+void addFitem(struct Funct *function){  
+  struct FunctList *fList2;
+
+  if (NULL == fList->function){
+    fList->function = function;
+    fList->Next = NULL;
+  }
+  else{
+    fList2 = (struct FunctList *)malloc(sizeof (struct FunctList));
+    fList2->function = function;
+    fList2->Next = NULL;
+    while (NULL != fList->Next){
+      fList = fList->Next;
+    }
+    fList->Next = fList2;
+  }
+}
+
 extern struct ExprResList *doList(struct ExprRes *Res, struct ExprResList *ResList){
   struct ExprResList *list;
 
@@ -1008,6 +1060,13 @@ void Finish(struct InstrSeq *Code){
   AppendSeq(code, Code);
   AppendSeq(code, GenInstr(NULL, "li", "$v0", "10", NULL)); 
   AppendSeq(code, GenInstr(NULL,"syscall",NULL,NULL,NULL));
+  //put functions here.
+  struct Funct *function = fList->function;
+  while (function){
+    AppendSeq(code, GenInstr(function->name, NULL, NULL, NULL, NULL));
+    AppendSeq(code, function->Instrs);
+    function = fList->Next;
+  }
   AppendSeq(code, GenInstr(NULL,".data",NULL,NULL,NULL));
   AppendSeq(code, GenInstr(NULL,".align","4",NULL,NULL));
   AppendSeq(code, GenInstr("_nl", ".asciiz", "\"\\n\"",NULL,NULL));

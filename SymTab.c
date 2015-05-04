@@ -114,14 +114,6 @@ void *GetStrVal(struct SymEntry *AnEntry){
   return AnEntry->strVal;
 }
 
-void SetElements(struct SymEntry *AnEntry, long num){
-  AnEntry->elements = num;
-}
-
-long GetElements(struct SymEntry *AnEntry){
-  return AnEntry->elements;
-}
-
 const char *GetName(struct SymEntry *AnEntry){
 
   return AnEntry->Name;

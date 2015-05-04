@@ -26,6 +26,7 @@ printstr                                {return Write_STR;}
 println                                 {return Write_LN;}
 printsp                                 {return Write_SP;}
 print					{return Write;}
+return                                  {return RETURN;}
 {letter}({letter}|{digit})*	        {return Ident;}
 {digit}{digit}*		                {return IntLit;}
 \&\&                                    {return AND;}

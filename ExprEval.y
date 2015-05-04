@@ -71,6 +71,7 @@ extern struct SymEntry *entry;
 %token GT
 %token STR
 %token Read
+%token RETURN
 
 %%
 
@@ -81,6 +82,8 @@ Dec		:	Int Id ';'	                                                {EnterName(tab
                                                                                          SetAttr(entry, (void *)"int");};
 Dec             :       Bool Id ';'                                                     {EnterName(table, $2, &entry);
                                                                                          SetAttr(entry, (void *)"bool");};
+Dec             :       Int Id '(' ')' '{' StmtSeq '}'                                  {doPLFunctDec("int", $2, $6);};
+Dec             :       Bool Id '(' ')' '{' StmtSeq '}'                                 {doPLFunctDec("bool", $2, $6);};
 StmtSeq 	:	Stmt StmtSeq							{$$ = AppendSeq($1, $2);};
 StmtSeq		:									{$$ = NULL;};
 Stmt            :       Write_LN ';'                                                    {$$ = doPrintLN();};
@@ -98,6 +101,8 @@ Stmt            :       Id '[' Expr ']' '=' Expr ';'                            
 Stmt		:	IF '(' BExpr ')' '{' StmtSeq '}'				{$$ = doIf($3, $6);};
 Stmt            :       IF '(' BExpr ')' '{' StmtSeq '}' ELSE '{' StmtSeq '}'           {$$ = doIfElse($3, $6, $10);};
 Stmt            :       WHILE '(' Expr ')' '{' StmtSeq '}'                              {$$ = doWhile($3, $6);};
+Stmt            :       Id '(' ')' ';'                                                  {$$ = doPLFunct($1);};
+Stmt            :       RETURN Expr ';'                                                 {$$ = doReturn($2);};
 ExprList        :       Expr ',' ExprList                                               {$$ = doList($1, $3);};
 ExprList        :       Expr                                                            {$$ = doListItem($1);};
 ExprList        :                                                                       {$$ = NULL;};
@@ -107,6 +112,7 @@ IdList          :       Id '[' Expr ']'                                         
 IdList          :       Id                                                              {$$ = doIdList($1, NULL);};
 IdList          :                                                                       {$$ = NULL;};
 Expr            :       BExpr                                                           {$$ = doConvert($1);};
+BExpr           :       BFactor                                                         {$$ = $1;};
 BExpr           :       Expr OR OExpr                                                   {$$ = doOR($1, $3);};
 Expr            :       OExpr                                                           {$$ = $1;};
 BExpr           :       OExpr AND AExpr                                                 {$$ = doAND($1, $3);};
