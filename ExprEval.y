@@ -26,12 +26,13 @@ extern struct SymEntry *entry;
   struct InstrSeq * InstrSeq;
   struct BExprRes * BExprRes;
   struct ExprResList *ExprResList;
+  struct IdList *IdList;
 }
 
-//%type <val> EVal
 %type <string> Id
 %type <string> String
 %type <boolean> BVal
+ //%type <ExprRes> ArrExp
 %type <ExprRes> Number
 %type <ExprRes> Factor
 %type <ExprRes> Term
@@ -45,6 +46,7 @@ extern struct SymEntry *entry;
 %type <BExprRes> BFactor
  //%type <BExprRes> BTerm
 %type <BExprRes> BExpr
+%type <IdList> IdList
 
 %token Ident 		
 %token IntLit 	
@@ -68,7 +70,7 @@ extern struct SymEntry *entry;
 %token LT
 %token GT
 %token STR
-%token DQ
+%token Read
 
 %%
 
@@ -79,24 +81,31 @@ Dec		:	Int Id ';'	                                                {EnterName(tab
                                                                                          SetAttr(entry, (void *)"int");};
 Dec             :       Bool Id ';'                                                     {EnterName(table, $2, &entry);
                                                                                          SetAttr(entry, (void *)"bool");};
-//Dec             :       Int Id '[' EVal ']' ';'                                         {EnterName(table, $2, &entry);
-//                                                                                         SetAttr(entry, (void *)"int[]");};
-StmtSeq 	:	Stmt StmtSeq							{$$ = AppendSeq($1, $2);} ;
+StmtSeq 	:	Stmt StmtSeq							{$$ = AppendSeq($1, $2);};
 StmtSeq		:									{$$ = NULL;};
-//EVal            :       Expr                                                            {$$ = getVal($1);};
-Stmt		:	Write Expr ';'  						{$$ = doPrint($2);};
-Stmt            :       Write '(' ExprList ')' ';'                                      {$$ = doPrintList($3);};
 Stmt            :       Write_LN ';'                                                    {$$ = doPrintLN();};
+Stmt            :       Write '(' ExprList ')' ';'                                      {$$ = doPrintList($3);};
+Stmt            :       Read '(' IdList ')' ';'                                         {$$ = doRead($3);};
+Stmt            :       Int Id '[' Expr ']' ';'                                         {$$ = enterArr($2, $4, "int[]");};
+Stmt            :       Bool Id '[' Expr ']' ';'                                        {$$ = enterArr($2, $4, "bool[]");};
+Stmt		:	Write Expr ';'  						{$$ = doPrint($2);};
+Stmt            :       Write Id '[' Expr ']' ';'                                       {$$ = doPrintArr($2, $4);};
 Stmt            :       Write_SP '(' Expr ')' ';'                                       {$$ = doPrintSP($3);};
 Stmt            :       Write_STR '(' String ')' ';'                                    {$$ = doPrintSTR($3);};
 Stmt            :       Write_STR '(' Id ')' ';'                                        {$$ = doPrintSTR($3);};
 Stmt		:	Id '=' Expr ';'							{$$ = doAssign($1, $3);};
+Stmt            :       Id '[' Expr ']' '=' Expr ';'                                    {$$ = doArrAssign($1, $3, $6);};
 Stmt		:	IF '(' BExpr ')' '{' StmtSeq '}'				{$$ = doIf($3, $6);};
 Stmt            :       IF '(' BExpr ')' '{' StmtSeq '}' ELSE '{' StmtSeq '}'           {$$ = doIfElse($3, $6, $10);};
 Stmt            :       WHILE '(' Expr ')' '{' StmtSeq '}'                              {$$ = doWhile($3, $6);};
 ExprList        :       Expr ',' ExprList                                               {$$ = doList($1, $3);};
 ExprList        :       Expr                                                            {$$ = doListItem($1);};
 ExprList        :                                                                       {$$ = NULL;};
+IdList          :       Id ',' IdList                                                   {$$ = doIdList($1, $3);};
+IdList          :       Id '[' Expr ']' ',' IdList                                      {$$ = doArrIdList($1, $3, $6);};
+IdList          :       Id '[' Expr ']'                                                 {$$ = doArrIdList($1, $3, NULL);};
+IdList          :       Id                                                              {$$ = doIdList($1, NULL);};
+IdList          :                                                                       {$$ = NULL;};
 Expr            :       BExpr                                                           {$$ = doConvert($1);};
 BExpr           :       Expr OR OExpr                                                   {$$ = doOR($1, $3);};
 Expr            :       OExpr                                                           {$$ = $1;};
