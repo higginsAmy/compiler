@@ -1,17 +1,20 @@
-int num;
+int num1;
 int num2;
 bool b1;
 bool b2;
 bool b3;
-
-num = 4;
-num2 = num + 1;
-b1 = false;
-b2 = num > 2;
-b3 = !b1;
-
-print num;
+bool b4;
+num1 = 10;
+num2 = num1 + 10;
+b1 = true;
+b2 = !b1;
+b3 = num1 < num2 || num1 > num2;
+b4 = num1 < num2 && num1 > num2;
+if (num1 < 2 || (1*2) == 2) {
+   print num1;
+}
 print num2;
 print b1;
 print b2;
 print b3;
+print b4;

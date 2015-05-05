@@ -9,18 +9,17 @@ int low;
 int high;
 int mid;
 
-printstr("Enter an integer between 1 and 10: ");
 read(size);
 i = 0;
 int x[10];
 while (i < size) {
-  printstr("Enter a positive integer: ");
   read(x[i]);
   i = i + 1;
-
+ }
   k = size-1;
   swapped = true;
-  while ( swapped) {
+  
+  while (swapped) {
     swapped = false;
     j = 0;
     while (j < k) {
@@ -34,16 +33,14 @@ while (i < size) {
     }
     k = k-1;
   }
-}
+
 i = 0;
-printstr("The array sorted: ");
 while (i < size) {
   print x[i];
   i = i + 1;
 }
 println;
 
-printstr("Enter a positive integer or 0 to quit: ");
 read(k);
 while (k != 0) {
   low = 0;
@@ -58,6 +55,5 @@ while (k != 0) {
     }
   }
   print(low == high && x[low] == k);
-  printstr("Enter a positive integer or 0 to quit: ");
   read(k);
 }

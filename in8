@@ -3,14 +3,28 @@ int y;
 int i;
 int j;
 int k;
+int g;
+int h;
+
 x = 5;
 y = 6;
+g = 1;
+h = 5;
 int a[x];
 bool b[y];
 a[0] = y;
 b[1+2] = true;
+
 read(i, j, k);
 read(b[0], b[1], b[2]);
+
+while (g < h){
+      printsp(2*g);
+      print g;
+      g = g + 1;
+}
+
+printstr("done!");	    
 print a[0];
 print b[0];
 print b[1];

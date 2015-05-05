@@ -48,6 +48,7 @@ extern struct ExprRes *doConvert(struct BExprRes *Res);
 extern struct ExprRes *doIntLit(char *digits);
 extern struct BExprRes *doBLit(bool b);
 extern struct ExprRes *doRval(char *name);
+extern struct ExprRes *doArrVal(char *Id, struct ExprRes *Res);
 extern struct ExprRes *doNOT(struct ExprRes *Res);
 extern struct BExprRes *doNOTe(struct ExprRes *Res);
 extern struct InstrSeq *doAssign(char *name,  struct ExprRes *Res1);

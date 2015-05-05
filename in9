@@ -5,13 +5,15 @@ int k;
 int func(){
     print x;
     return 8;
-}	
+}
+
 x = 1;
 y = 1 + x;
 z = 2 * x + 1;
 int a[10];
 a[4] = 0;
 k = func();
+
 print (x, y, z);
 print a[4];
 print k;

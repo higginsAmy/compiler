@@ -166,13 +166,56 @@ struct ExprRes *doRval(char *name){
   Res->Instrs = GenInstr(NULL, "lw", TmpRegName(Res->Reg), Name, NULL);
   if (0 == strcmp((char *)GetAttr(entry), "bool") && NULL != entry){
     Res->isBool = true;
-    printf("Variable is a bool.\n");
+    //printf("Variable is a bool.\n");
   }
   else{
     Res->isBool = false;
-    printf("Variable is not a bool.\n");
+    //printf("Variable is not a bool.\n");
   }
   
+  return Res;
+}
+
+extern struct ExprRes *doArrVal(char *Id, struct ExprRes *Res){
+  char *label = GenLabel();
+  int reg = AvailTmpReg();
+  int reg2 = AvailTmpReg();
+
+  if (!FindName(table, Id)){
+    WriteIndicator(GetCurrentColumn());
+    WriteMessage("Undeclared variable");
+  }
+
+  char *Name = (char *)malloc((strlen(Id) + 5) * sizeof(char));
+  strcpy(Name, "var_");
+  strcat(Name, Id);
+
+  char *name2 = (char *)malloc((strlen(Id) +9) * sizeof(char));
+  strcpy(name2, "var_len_");
+  strcat(name2, Id);
+
+  AppendSeq(Res->Instrs, GenInstr(NULL, "bltz", TmpRegName(Res->Reg), label, NULL));
+  AppendSeq(Res->Instrs, GenInstr(NULL, "lw", TmpRegName(reg), name2, NULL));
+  AppendSeq(Res->Instrs, GenInstr(NULL, "bge", TmpRegName(Res->Reg), TmpRegName(reg), label));
+  AppendSeq(Res->Instrs, GenInstr(NULL, "lw", TmpRegName(reg), Name, NULL));
+  AppendSeq(Res->Instrs, GenInstr(NULL, "li", TmpRegName(reg2), "4", NULL));
+  AppendSeq(Res->Instrs, GenInstr(NULL, "mul", TmpRegName(reg2), TmpRegName(Res->Reg), TmpRegName(reg2)));
+  AppendSeq(Res->Instrs, GenInstr(NULL, "add", TmpRegName(reg), TmpRegName(reg), TmpRegName(reg2)));
+
+  char *regName = (char *)malloc(6 * sizeof(char));
+  strcpy(regName, "(");
+  strcat(regName, TmpRegName(reg));
+  strcat(regName, ")");
+
+  AppendSeq(Res->Instrs, GenInstr(NULL, "lw", TmpRegName(Res->Reg), regName, NULL));
+  AppendSeq(Res->Instrs, GenInstr(label, NULL, NULL, NULL, NULL));
+
+  ReleaseTmpReg(reg);
+  ReleaseTmpReg(reg2);
+  free(Name);
+  free(name2);
+  free(regName);
+
   return Res;
 }
 
@@ -446,7 +489,7 @@ struct InstrSeq *doPrint(struct ExprRes *Expr){
   if (Expr->isBool){
     label = GenLabel();
     finish = GenLabel();
-    printf("Printing a boolean\n");
+    //printf("Printing a boolean\n");
     AppendSeq(code, GenInstr(NULL, "li", TmpRegName(reg), "1", NULL));
     AppendSeq(code, GenInstr(NULL, "li", "$v0", "4", NULL));
     AppendSeq(code, GenInstr(NULL, "bne", TmpRegName(Expr->Reg),
@@ -460,7 +503,7 @@ struct InstrSeq *doPrint(struct ExprRes *Expr){
     AppendSeq(code, GenInstr(finish, NULL, NULL, NULL, NULL));
   }
   else{
-    printf("Printing an int\n");
+    //printf("Printing an int\n");
     AppendSeq(code,GenInstr(NULL,"li","$v0","1",NULL));
     AppendSeq(code,GenInstr(NULL,"move","$a0",TmpRegName(Expr->Reg),NULL));
     AppendSeq(code,GenInstr(NULL,"syscall",NULL,NULL,NULL));
@@ -490,7 +533,7 @@ extern struct InstrSeq *doPrintList(struct ExprResList *List){
     if (temp->isBool){
       label = GenLabel();
       finish = GenLabel();
-      printf("Printing a boolean\n");
+      //printf("Printing a boolean\n");
       AppendSeq(code, GenInstr(NULL, "li", TmpRegName(reg), "1", NULL));
       AppendSeq(code, GenInstr(NULL, "li", "$v0", "4", NULL));
       AppendSeq(code, GenInstr(NULL, "bne", TmpRegName(temp->Reg),
@@ -504,7 +547,7 @@ extern struct InstrSeq *doPrintList(struct ExprResList *List){
       AppendSeq(code, GenInstr(finish, NULL, NULL, NULL, NULL));
     }
     else{
-      printf("Printing an int\n");
+      //printf("Printing an int\n");
       AppendSeq(code, GenInstr(NULL,"li","$v0","1",NULL));
       AppendSeq(code, GenInstr(NULL,"move","$a0",TmpRegName(temp->Reg),NULL));
       AppendSeq(code, GenInstr(NULL,"syscall",NULL,NULL,NULL));
@@ -624,7 +667,7 @@ extern struct InstrSeq *doPrintArr(char *Id, struct ExprRes *Res){
   if (0 == strcmp((char*)GetAttr(entry), "bool[]")){
     label2 = GenLabel();
     finish = GenLabel();
-    printf("Printing a boolean\n");
+    //printf("Printing a boolean\n");
     AppendSeq(code, GenInstr(NULL, "li", TmpRegName(reg2), "1", NULL));
     AppendSeq(code, GenInstr(NULL, "li", "$v0", "4", NULL));
     AppendSeq(code, GenInstr(NULL, "bne", TmpRegName(reg), TmpRegName(reg2), label2));
@@ -1023,10 +1066,10 @@ void printExprList(struct ExprResList *list){
   while (templist){
     temp = templist->Expr;
     if (temp->isBool){
-      printf("Variable is type: boolean\n");
+      //printf("Variable is type: boolean\n");
     }
     else{
-      printf("Variable is type: int\n");
+      //printf("Variable is type: int\n");
     }
     templist = templist->Next;
   }

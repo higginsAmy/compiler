@@ -140,6 +140,7 @@ Term            :       Term '%' Factor                                         
 Term		:	Factor                                                          {$$ = $1;};
 Factor          :       Factor '^' Number                                               {$$ = doExp($1, $3);};
 Factor          :       Number                                                          {$$ = $1;};
+Number          :       Id '[' Expr ']'                                                 {$$ = doArrVal($1, $3);};
 Number          :       Id                                                              {$$ = doRval($1);};
 Number          :       '-' Number                                                      {$$ = doNEG($2);};
 Number          :       '(' Expr ')'                                                    {$$ = $2;};
