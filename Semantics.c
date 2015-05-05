@@ -176,11 +176,17 @@ struct ExprRes *doRval(char *name){
   return Res;
 }
 
-struct BExprRes *doNOT(struct BExprRes *Res){
+struct ExprRes *doNOT(struct ExprRes *Res){
   int reg1 = AvailTmpReg();
   char *label = GenLabel();
   char *finish = GenLabel();
 
+  if (!Res->isBool){
+    WriteIndicator(GetCurrentColumn());
+    WriteMessage("Type violation: Unable to apply NOT operator to int.");
+    exit(0);
+  }
+  
   AppendSeq(Res->Instrs, GenInstr(NULL, "li", TmpRegName(reg1), "1", NULL));
   AppendSeq(Res->Instrs, GenInstr(NULL, "beq", TmpRegName(Res->Reg),
 				  TmpRegName(reg1), label));
@@ -930,11 +936,15 @@ void doPLFunctDec(char *type, char *Id, struct InstrSeq *Seq){
   addFitem(function);
 }
 
-extern struct InstrSeq *doPLFunct(char *Id){
-  struct InstrSeq *code;
+extern struct ExprRes *doPLFunct(char *Id){
+  struct ExprRes *Res;
 
-  code = GenInstr(NULL, "jal", Id, NULL, NULL);
-  return code;
+  Res = (struct ExprRes *)malloc(sizeof(struct ExprRes));
+  Res->Reg = AvailTmpReg();
+  Res->Instrs = GenInstr(NULL, "jal", Id, NULL, NULL);
+  AppendSeq(Res->Instrs, GenInstr(NULL, "move", TmpRegName(Res->Reg), "$v0", NULL));
+	    
+  return Res;
 }
 
 extern struct InstrSeq *doReturn(struct ExprRes *Res){
@@ -1061,11 +1071,14 @@ void Finish(struct InstrSeq *Code){
   AppendSeq(code, GenInstr(NULL, "li", "$v0", "10", NULL)); 
   AppendSeq(code, GenInstr(NULL,"syscall",NULL,NULL,NULL));
   //put functions here.
-  struct Funct *function = fList->function;
-  while (function){
-    AppendSeq(code, GenInstr(function->name, NULL, NULL, NULL, NULL));
-    AppendSeq(code, function->Instrs);
-    function = fList->Next;
+  struct Funct *function;
+  while (NULL != fList){
+    function = fList->function;
+    if (function){
+      AppendSeq(code, GenInstr(function->name, NULL, NULL, NULL, NULL));
+      AppendSeq(code, function->Instrs);
+    }
+    fList = fList->Next;
   }
   AppendSeq(code, GenInstr(NULL,".data",NULL,NULL,NULL));
   AppendSeq(code, GenInstr(NULL,".align","4",NULL,NULL));
